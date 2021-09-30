@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     vyos = {
-      version = "0.1.0"
+      version = "0.x.x"
       source  = "foltik/vyos"
     }
   }
@@ -9,14 +9,17 @@ terraform {
 
 provider "vyos" {
   url = "https://vyos.local"
-  key = "XXXXXXXX"
+  key = "xxxxxxxxx"
 }
 
-resource "vyos_config" "host_name" {
-  key   = "system host_name"
+# Equivalent to "set system host-name vyos"
+resource "vyos_config" "hostname" {
+  key   = "system host-name"
   value = "vyos"
 }
 
-output "host_name" {
-  value = vyos_config.host_name.value
+# Equivalent to "set system static-host-mapping host-name test.local inet 10.0.0.1"
+resource "vyos_static_host_mapping" "mapping" {
+  host = "test.local"
+  ip = "10.0.0.1"
 }
