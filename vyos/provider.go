@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// Provider -
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -31,7 +30,8 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"vyos_config": resourceConfig(),
+			"vyos_config":              resourceConfig(),
+			"vyos_static_host_mapping": resourceStaticHostMapping(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"vyos_config": dataSourceConfig(),

@@ -4,3 +4,4 @@ vendor/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+terraform-provider-vyos
