@@ -3,12 +3,12 @@
 page_title: "vyos_config_block Resource - terraform-provider-vyos"
 subcategory: ""
 description: |-
-  This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist
+  This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist.
 ---
 
 # vyos_config_block (Resource)
 
-This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist
+This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist.
 
 ## Example Usage
 
@@ -39,7 +39,7 @@ resource "vyos_config_block" "allow_sith_supremacy_jedi" {
 
 ### Required
 
-- **configs** (Map of String) Key/Valye map of config parameters.
+- **configs** (Map of String) Key/Value map of config parameters.
 - **path** (String) Config path seperated by spaces.
 
 ### Read-Only

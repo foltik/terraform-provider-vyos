@@ -3,17 +3,17 @@
 page_title: "vyos_static_host_mapping Resource - terraform-provider-vyos"
 subcategory: ""
 description: |-
-  
+  This resource manages a static host mapping with the given hostname and ipv4 address.
 ---
 
 # vyos_static_host_mapping (Resource)
 
-
+This resource manages a static host mapping with the given hostname and ipv4 address.
 
 ## Example Usage
 
 ```terraform
-# Equivalent to "set system static-host-mapping host-name test.local inet 10.0.0.1"
+# Performs "set system static-host-mapping host-name test.local inet 10.0.0.1"
 resource "vyos_static_host_mapping" "mapping" {
   host = "test.local"
   ip   = "10.0.0.1"
@@ -25,8 +25,8 @@ resource "vyos_static_host_mapping" "mapping" {
 
 ### Required
 
-- **host** (String)
-- **ip** (String)
+- **host** (String) Hostname.
+- **ip** (String) IPv4 address.
 
 ### Optional
 

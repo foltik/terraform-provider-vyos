@@ -13,7 +13,7 @@ import (
 
 func resourceConfigBlock() *schema.Resource {
 	return &schema.Resource{
-		Description:   "This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist",
+		Description:   "This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist.",
 		CreateContext: resourceConfigBlockCreate,
 		ReadContext:   resourceConfigBlockRead,
 		UpdateContext: resourceConfigBlockUpdate,
@@ -35,7 +35,7 @@ func resourceConfigBlock() *schema.Resource {
 				ForceNew:         true,
 			},
 			"configs": {
-				Description:      "Key/Valye map of config parameters.",
+				Description:      "Key/Value map of config parameters.",
 				Type:             schema.TypeMap,
 				Required:         true,
 				ValidateDiagFunc: validation.MapKeyMatch(regexp.MustCompile("^[^ ]+$"), "Config keys can not contain whitespace"),

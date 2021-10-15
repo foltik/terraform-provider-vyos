@@ -14,18 +14,21 @@ import (
 
 func resourceStaticHostMapping() *schema.Resource {
 	return &schema.Resource{
+		Description:   "This resource manages a static host mapping with the given hostname and ipv4 address.",
 		CreateContext: resourceStaticHostMappingCreate,
 		ReadContext:   resourceStaticHostMappingRead,
 		UpdateContext: resourceStaticHostMappingUpdate,
 		DeleteContext: resourceStaticHostMappingDelete,
 		Schema: map[string]*schema.Schema{
 			"host": {
-				Type:     schema.TypeString,
-				Required: true,
+				Description: "Hostname.",
+				Type:        schema.TypeString,
+				Required:    true,
 			},
 			"ip": {
-				Type:     schema.TypeString,
-				Required: true,
+				Description: "IPv4 address.",
+				Type:        schema.TypeString,
+				Required:    true,
 			},
 		},
 	}
@@ -66,6 +69,8 @@ func resourceStaticHostMappingUpdate(ctx context.Context, d *schema.ResourceData
 	c := m.(*client.Client)
 	host, ip := d.Get("host").(string), d.Get("ip").(string)
 
+	// If the hostname changes, so does the configuration path,
+	// so we need to delete the old mapping.
 	if d.HasChange("host") {
 		old, _ := d.GetChange("host")
 		path := fmt.Sprintf("system static-host-mapping host-name %s", old)

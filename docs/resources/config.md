@@ -3,17 +3,17 @@
 page_title: "vyos_config Resource - terraform-provider-vyos"
 subcategory: ""
 description: |-
-  
+  This resource manages a single configuration value. This as well as vyosconfigblock can act as a fallback when a dedicated resource does not exist.
 ---
 
 # vyos_config (Resource)
 
-
+This resource manages a single configuration value. This as well as vyos_config_block can act as a fallback when a dedicated resource does not exist.
 
 ## Example Usage
 
 ```terraform
-# Equivalent to "set system host-name vyos"
+# Performs "set system host-name vyos"
 resource "vyos_config" "hostname" {
   key   = "system host-name"
   value = "vyos"
@@ -25,8 +25,8 @@ resource "vyos_config" "hostname" {
 
 ### Required
 
-- **key** (String)
-- **value** (String)
+- **key** (String) Config path separated by spaces.
+- **value** (String) Config value.
 
 ### Optional
 
