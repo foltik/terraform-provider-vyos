@@ -13,6 +13,7 @@ import (
 
 func resourceConfigBlock() *schema.Resource {
 	return &schema.Resource{
+		Description:   "This resource is useful when a single command is not enough for a valid config commit. This as well as vyos_config can act as a fallback when a dedicated resource does not exist",
 		CreateContext: resourceConfigBlockCreate,
 		ReadContext:   resourceConfigBlockRead,
 		UpdateContext: resourceConfigBlockUpdate,

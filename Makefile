@@ -8,6 +8,9 @@ OS_ARCH=linux_amd64
 
 default: install
 
+doc:
+	go generate
+
 build:
 	go build -o ${BINARY}
 
