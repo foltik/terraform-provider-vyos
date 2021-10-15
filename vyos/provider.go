@@ -31,6 +31,7 @@ func Provider() *schema.Provider {
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"vyos_config":              resourceConfig(),
+			"vyos_config_block":        resourceConfigBlock(),
 			"vyos_static_host_mapping": resourceStaticHostMapping(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
