@@ -35,8 +35,11 @@ func resourceConfigBlock() *schema.Resource {
 				ForceNew:         true,
 			},
 			"configs": {
-				Description:      "Key/Value map of config parameters.",
-				Type:             schema.TypeMap,
+				Description: "Key/Value map of config parameters.",
+				Type:        schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 				Required:         true,
 				ValidateDiagFunc: validation.MapKeyMatch(regexp.MustCompile("^[^ ]+$"), "Config keys can not contain whitespace"),
 			},
