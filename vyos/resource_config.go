@@ -13,18 +13,21 @@ import (
 
 func resourceConfig() *schema.Resource {
 	return &schema.Resource{
+		Description:   "This resource manages a single configuration value. This as well as vyos_config_block can act as a fallback when a dedicated resource does not exist.",
 		CreateContext: resourceConfigCreate,
 		ReadContext:   resourceConfigRead,
 		UpdateContext: resourceConfigUpdate,
 		DeleteContext: resourceConfigDelete,
 		Schema: map[string]*schema.Schema{
 			"key": {
-				Type:     schema.TypeString,
-				Required: true,
+				Description: "Config path separated by spaces.",
+				Type:        schema.TypeString,
+				Required:    true,
 			},
 			"value": {
-				Type:     schema.TypeString,
-				Required: true,
+				Description: "Config value.",
+				Type:        schema.TypeString,
+				Required:    true,
 			},
 		},
 	}

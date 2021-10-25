@@ -7,6 +7,9 @@ import (
 	"github.com/foltik/terraform-provider-vyos/vyos"
 )
 
+// Generate docs
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
+
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {
