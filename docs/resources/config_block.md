@@ -50,17 +50,6 @@ resource "vyos_config_block" "allow_sith_supremacy_jedi" {
 
 - **id** (String) The resource ID, same as the `path`
 
-<a id="nestedblock--timeouts"></a>
-### Nested Schema for `timeouts`
-
-Optional:
-
-- **create** (String)
-- **default** (String)
-- **delete** (String)
-- **read** (String)
-- **update** (String)
-
 ## Import
 
 Import is supported using the following syntax:
