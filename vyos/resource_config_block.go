@@ -23,7 +23,7 @@ func resourceConfigBlock() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The resource ID.",
+				Description: "The resource ID, same as the `path`",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
