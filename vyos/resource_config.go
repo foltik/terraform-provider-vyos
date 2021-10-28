@@ -3,7 +3,6 @@ package vyos
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -18,7 +17,15 @@ func resourceConfig() *schema.Resource {
 		ReadContext:   resourceConfigRead,
 		UpdateContext: resourceConfigUpdate,
 		DeleteContext: resourceConfigDelete,
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 		Schema: map[string]*schema.Schema{
+			"id": {
+				Description: "The resource ID, same as the `key`",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
 			"key": {
 				Description: "Config path separated by spaces.",
 				Type:        schema.TypeString,
@@ -39,18 +46,41 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 
 	var diags diag.Diagnostics
 
-	err := c.Config.Set(key, value)
+	// Check if config already exists
+	val, err := c.Config.Show(key)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// Dont care about sub config blocks
+	if val != nil {
+		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, val)
+	}
+
+	err = c.Config.Set(key, value)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
+	d.SetId(key)
 	return diags
 }
 
 func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*client.Client)
-	key := d.Get("key").(string)
+	key := d.Id()
+
+	// Convert old unix timestamp style ID to key path for existing resources to support importing
+	if _, err := strconv.Atoi(key); err == nil {
+		key = d.Get("key").(string)
+		d.SetId(key)
+	}
+
+	// Easiest way to allow ImportStatePassthroughContext to work is to set the path
+	if d.Get("key") == "" {
+		if err := d.Set("key", key); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	value, err := c.Config.Show(key)
 	if err != nil {
