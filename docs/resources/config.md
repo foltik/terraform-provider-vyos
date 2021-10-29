@@ -28,8 +28,14 @@ resource "vyos_config" "hostname" {
 - **key** (String) Config path separated by spaces.
 - **value** (String) Config value.
 
-### Optional
+### Read-Only
 
-- **id** (String) The ID of this resource.
+- **id** (String) The resource ID, same as the `key`
 
+## Import
 
+Import is supported using the following syntax:
+
+```shell
+terraform import vyos_config.hostname "system host-name"
+```

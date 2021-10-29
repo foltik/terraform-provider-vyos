@@ -44,7 +44,7 @@ resource "vyos_config_block" "allow_sith_supremacy_jedi" {
 
 ### Read-Only
 
-- **id** (String) The resource ID.
+- **id** (String) The resource ID, same as the `path`
 
 ## Import
 
