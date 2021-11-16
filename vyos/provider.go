@@ -29,21 +29,21 @@ func Provider() *schema.Provider {
 				Optional: true,
 			},
 			"save": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
 				Description: "Save after making changes in Vyos",
 			},
 			"save_file": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
 				Description: "File to save configuration. Uses config.boot by default.",
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"vyos_config":              resourceConfig(),
 			"vyos_config_block":        resourceConfigBlock(),
-			"vyos_config_block_tree":   resourceConfigBlockTree(),
+			"vyos_firewall_rule_set":   resourceRuleSet(),
 			"vyos_static_host_mapping": resourceStaticHostMapping(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
@@ -53,9 +53,9 @@ func Provider() *schema.Provider {
 	}
 }
 
-type ProviderClass struct{
-	schema *schema.ResourceData;
-	client *client.Client;
+type ProviderClass struct {
+	schema *schema.ResourceData
+	client *client.Client
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -79,14 +79,14 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 }
 
 func (p *ProviderClass) conditionalSave(ctx context.Context) {
-	save      := p.schema.Get("save").(bool)
+	save := p.schema.Get("save").(bool)
 	save_file := p.schema.Get("save_file").(string)
 
-	if (save) {
+	if save {
 		if save_file == "" {
-			p.client.Config.Save(ctx);
+			p.client.Config.Save(ctx)
 		} else {
-			p.client.Config.SaveFile(ctx, save_file);
+			p.client.Config.SaveFile(ctx, save_file)
 		}
 	}
 }
