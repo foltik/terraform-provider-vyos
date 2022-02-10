@@ -15,13 +15,13 @@ const (
 	ResourceFirewallRuleSetKeyTemplate = "firewall name {{name}}"
 )
 
-func resourceRuleSet() *schema.Resource {
+func resourceFirewallRuleSet() *schema.Resource {
 	return &schema.Resource{
 		Description:   "A rule-set is a named collection of firewall rules that can be applied to an interface or a zone, for more information see [VyOS Firewall doc](https://docs.vyos.io/en/latest/configuration/firewall/index.html#overview).",
-		CreateContext: resourceRuleSetCreate,
-		ReadContext:   resourceRuleSetRead,
-		UpdateContext: resourceRuleSetUpdate,
-		DeleteContext: resourceRuleSetDelete,
+		CreateContext: resourceFirewallRuleSetCreate,
+		ReadContext:   resourceFirewallRuleSetRead,
+		UpdateContext: resourceFirewallRuleSetUpdate,
+		DeleteContext: resourceFirewallRuleSetDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -61,22 +61,22 @@ func resourceRuleSet() *schema.Resource {
 	}
 }
 
-func resourceRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*client.Client)
-	return helper_config_block_read(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceRuleSet().Schema)
+	return helper_config_block_read(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
-func resourceRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*client.Client)
-	return helper_config_block_create(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceRuleSet().Schema)
+	return helper_config_block_create(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
-func resourceRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*client.Client)
-	return helper_config_block_update(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceRuleSet().Schema)
+	return helper_config_block_update(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
-func resourceRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*client.Client)
-	return helper_config_block_delete(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceRuleSet().Schema)
+	return helper_config_block_delete(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
