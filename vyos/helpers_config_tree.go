@@ -16,6 +16,13 @@ import (
 )
 
 /*
+TODO: propper doc strings
+TODO: is it worth it to create stucts for vyos and terraform style configs so its easier to understand when to use what?
+TODO: Add missing comments where applicable
+TODO: Migrate resource_config_block over to these helpers when delete function is complete
+*/
+
+/*
 #################################################
 #
 #
@@ -25,94 +32,142 @@ import (
 #################################################
 */
 
-func helperSchemaBasedVyosToTerraformWalker(resource_schema map[string]*schema.Schema, live_config map[string]interface{}) (map[string]interface{}, error) {
-	var err error
+// Recursively convert VyOS configuration to terraform config based on resource schema
+// If a list/set type has MaxItems 1 it is considered to be a configuration block and not a real list on the VyOS side.
+//
+// Takes a VyOS style config
+// Returns a Terraform Style config
+func helperSchemaBasedVyosToTerraformWalker(resource_schema map[string]*schema.Schema, vyos_config map[string]interface{}) (map[string]interface{}, error) {
 	return_value := make(map[string]interface{})
 
 	// Dumb, but helpful
 	pc, _, _, _ := runtime.Caller(0)
 	func_name := runtime.FuncForPC(pc).Name()
 
-	for schema_key, schema_value := range resource_schema {
-		// Convert schema keys "_" to the VyOS version of the attributet name which should usually be "-""
-		live_key := strings.Replace(schema_key, "_", "-", -1)
+	log.Printf("[DEBUG] %s: START", func_name)
 
-		log.Printf("[DEBUG] %s: investigating schema_key '%s', live_key '%s'.",
-			func_name, schema_key, live_key)
+	// Walk the schema map
+	for schema_key, schema_body := range resource_schema {
 
-		if live_value, ok := live_config[live_key]; ok {
+		// Convert schema_key that uses "_" to the vyos_key version which uses "-"
+		vyos_key := strings.Replace(schema_key, "_", "-", -1)
+		log.Printf("[DEBUG] %s: investigating schema_key '%s', vyos_key '%s'.", func_name, schema_key, vyos_key)
 
-			live_value_byte, _ := json.Marshal(live_config[live_key])
+		// Check if VyOS has the current parameter/key configured
+		if vyos_value, ok := vyos_config[vyos_key]; ok {
+
+			// Un-JSON the data returned from VyOS
+			// TODO is this needed, why did we not need it when fetching the vyos_value from the vyos_config above
+			vyos_value_byte, _ := json.Marshal(vyos_config[vyos_key])
 			log.Printf(
-				"[DEBUG] %s: investigating live_value '%v', expected to be type: '%s', schematype: '%T', current live value '%s'",
-				func_name, live_value, schema_value.Type.String(), schema_value, string(live_value_byte),
+				"[DEBUG] %s: investigating vyos_value '%v', expected to be type: '%s', schematype: '%T', current live value '%s'",
+				func_name, vyos_value, schema_body.Type.String(), schema_body, string(vyos_value_byte),
 			)
 
-			switch schema_value.Type.String() {
+			// Treat each type of parameter according to their type
+			switch schema_body.Type.String() {
 			case "TypeMap":
-				subconfig := live_config[live_key]
-				return_value[schema_key], err = helperSchemaBasedVyosToTerraformWalker(
-					schema_value.Elem.(map[string]*schema.Schema),
-					subconfig.(map[string]interface{}),
-				)
+				sub_schema_body := schema_body.Elem.(map[string]*schema.Schema)
+				vyos_value := vyos_config[vyos_key].(map[string]interface{})
+
+				// Recurse for map
+				if ret, err := helperSchemaBasedVyosToTerraformWalker(sub_schema_body, vyos_value); err != nil {
+					// Raise errors to the top if encountered during reccrusion
+					return nil, err
+				} else {
+					return_value[schema_key] = ret
+				}
+
 			case "TypeList", "TypeSet":
-				subconfig := live_config[live_key]
 
-				// This is if we have a config block (kind of a workaround), which means schema should have MaxItems set to 1
-				// The schema would still be a List, but VyOS would send back a map, so just treat it as such.
-				// hoever the schema needs some fixing up.
-				if schema_value.MaxItems == 1 {
-					sub_schema := schema_value.Elem.(*schema.Resource).Schema
-					var v map[string]interface{}
-					v, err = helperSchemaBasedVyosToTerraformWalker(
-						sub_schema,
-						subconfig.(map[string]interface{}),
-					)
+				log.Printf("[DEBUG] %s: schema_key '%s' has MaxItems set to '%v'", func_name, schema_key, schema_body.MaxItems)
 
-					// turn the value back into a list so it matches the shema
-					return_value[schema_key] = []interface{}{v}
+				// This is if we have a config block, which means schema should have MaxItems set to 1 (I dont know if this is a workaround or the correct way)
+				// The schema would still be a list/set, but VyOS would send back a map, so we recurse.
+				//
+				// Else treat it as a normal list/set
+				if schema_body.MaxItems == 1 {
+					sub_schema_body := schema_body.Elem.(*schema.Resource).Schema
+					vyos_value := vyos_config[vyos_key].(map[string]interface{})
+
+					// Recurse for map
+					if ret, err := helperSchemaBasedVyosToTerraformWalker(sub_schema_body, vyos_value); err != nil {
+						// Raise errors to the top if encountered during reccrusion
+						return nil, err
+					} else {
+						// Turn the value back into a list so it matches the schema
+						return_value[schema_key] = []interface{}{ret}
+					}
 
 				} else {
 
-					//return_value[schema_key] = helperSchemaBasedConfigLiveToConfigList(schema_value.Elem.(*schema.Schema), subconfig.([]interface{}))
+					// Loop over each vyos_value (list elements returned from VyOS)
+					for vyos_value_index, vyos_value := range vyos_config[vyos_key].([]interface{}) {
+						log.Printf("[DEBUG] %s: investigating vyos_value_index '%d'.", func_name, vyos_value_index)
 
-					for subconfig_idx, subconfig_element := range subconfig.([]interface{}) {
-						log.Printf(
-							"[DEBUG] %s: investigating index '%d'.",
-							func_name, subconfig_idx,
-						)
+						// Loop over each parameter in schema
+						for sub_schema_key, sub_schema_body := range schema_body.Elem.(*schema.Resource).Schema {
 
-						var sub_schema map[string]*schema.Schema
-						is_primitive := false
-
-						switch schema_value.Elem.(type) {
-						case map[string]*schema.Schema:
-							sub_schema = schema_value.Elem.(map[string]*schema.Schema)
-						case *schema.Resource:
-							sub_schema = schema_value.Elem.(*schema.Resource).Schema
-						case *schema.Schema:
-							is_primitive = true
-						default:
-							return nil, fmt.Errorf("[DEBUG] %s: schema for key: '%s' of type: '%T' not handled", func_name, schema_key, schema_value.Elem)
-
-						}
-
-						if is_primitive {
-							return_value[schema_key] = helperSchemaTerraformToVyosSetter(
-								schema_value.Elem.(*schema.Schema),
-								subconfig_element,
+							fmt.Printf("[DEBUG] %s: sub_schema_key: '%s' of golang type: '%T' expects schema type: '%s'",
+								func_name, sub_schema_key, sub_schema_body.Elem, sub_schema_body.Type.String(),
 							)
-						} else {
-							return_value[schema_key], err = helperSchemaBasedTerraformToVyosWalker(
-								sub_schema,
-								subconfig_element.(map[string]interface{}),
-							)
+
+							// Treat each parameter according to their type
+							switch schema_body.Type.String() {
+							case "TypeMap":
+								sub_schema_body := schema_body.Elem.(map[string]*schema.Schema)
+								vyos_value := vyos_config[vyos_key].(map[string]interface{})
+
+								// Recurse for map
+								if ret, err := helperSchemaBasedVyosToTerraformWalker(sub_schema_body, vyos_value); err != nil {
+									// Raise errors to the top if encountered during reccrusion
+									return nil, err
+								} else {
+									// Append the return_value to the list
+									return_value[schema_key] = append(
+										return_value[schema_key].([]interface{}),
+										ret,
+									)
+								}
+							default:
+								// TODO can this be recursed by sending schema and such to self, to avoid having 2 blocks handeling default <-> primitive types
+
+								// Append any primitive type to return_value list
+								switch sub_schema_body.Type.String() {
+								case "TypeBool":
+									// Do bool check since API returns "key:{}" for true and nil for false, instead of a nice and usefull true/false
+									if vyos_value != nil {
+										vyos_value = true
+									} else {
+										vyos_value = false
+									}
+								default:
+								}
+								//ret := helperSchemaBasedVyosToTerraformSetter(sub_schema_body, vyos_value)
+								return_value[schema_key] = append(
+									return_value[schema_key].([]interface{}),
+									vyos_value,
+								)
+
+							}
 						}
 					}
-
 				}
+
 			default:
-				return_value[schema_key] = helperSchemaBasedVyosToTerraformSetter(schema_value, live_value)
+				// Append any primitive type to return_value list
+				switch schema_body.Type.String() {
+				case "TypeBool":
+					// Do bool check since API returns "key:{}" for true and nil for false, instead of a nice and usefull true/false
+					if vyos_value != nil {
+						vyos_value = true
+					} else {
+						vyos_value = false
+					}
+				default:
+				}
+
+				return_value[schema_key] = vyos_value
 			}
 		}
 	}
@@ -122,26 +177,7 @@ func helperSchemaBasedVyosToTerraformWalker(resource_schema map[string]*schema.S
 		func_name, return_value,
 	)
 
-	return return_value, err
-}
-
-func helperSchemaBasedVyosToTerraformSetter(resource_schema *schema.Schema, live_config interface{}) interface{} {
-
-	var return_value interface{}
-
-	switch resource_schema.Type.String() {
-	case "TypeBool":
-		// Do bool check since API returns "key:{}" for true and "" for false, instead of a nice and usefull true/false
-		if live_config != nil {
-			return_value = true
-		} else {
-			return_value = false
-		}
-	default:
-		return_value = live_config
-	}
-
-	return return_value
+	return return_value, nil
 }
 
 /*
@@ -154,89 +190,170 @@ func helperSchemaBasedVyosToTerraformSetter(resource_schema *schema.Schema, live
 #################################################
 */
 
-func helperSchemaBasedTerraformToVyosWalker(resource_schema map[string]*schema.Schema, config map[string]interface{}) (map[string]interface{}, error) {
-	var err error
+// Recursively convert terraform configuration to VyOS client config tree based on resource schema
+// If a list/set type has MaxItems 1 it is considered to be a configuration block and not a real list on the VyOS side.
+//
+// Takes a Terraform Style config
+// Retruns a VyOS style config
+func helperSchemaBasedTerraformToVyosWalker(resource_schema map[string]*schema.Schema, terraform_config map[string]interface{}) (map[string]interface{}, error) {
 	return_value := make(map[string]interface{})
 
 	// Dumb, but helpful
 	pc, _, _, _ := runtime.Caller(0)
 	func_name := runtime.FuncForPC(pc).Name()
 
-	for schema_key, schema_value := range resource_schema {
-		// Convert schema keys "_" to the VyOS version of the attributet name which should usually be "-""
-		//live_key := strings.Replace(schema_key, "_", "-", -1)
+	log.Printf("[DEBUG] %s: START", func_name)
 
-		log.Printf("[DEBUG] %s: schema_key '%s'", func_name, schema_key)
+	// Walk the schema map
+	for schema_key, schema_body := range resource_schema {
 
-		if subconfig, ok := config[schema_key]; ok {
+		// Convert schema_key that uses "_" to the vyos_key version which uses "-"
+		vyos_key := strings.Replace(schema_key, "_", "-", -1)
+		log.Printf("[DEBUG] %s: investigating schema_key '%s', vyos_key '%s'.", func_name, schema_key, vyos_key)
+
+		// Check if VyOS has the current parameter/key configured
+		if terraform_value, ok := terraform_config[schema_key]; ok {
 			log.Printf(
-				"[DEBUG] %s: investigating subconfig '%s' of type: '%s', schematype: '%T', with value: '%v'.",
-				func_name, schema_key, schema_value.Type.String(), subconfig, subconfig,
+				"[DEBUG] %s: investigating terraform_value '%s' of type: '%s', schematype: '%T', with value: '%v'.",
+				func_name, schema_key, schema_body.Type.String(), terraform_value, terraform_value,
 			)
 
-			switch schema_value.Type.String() {
+			switch schema_body.Type.String() {
 			case "TypeMap":
-				return_value[schema_key], err = helperSchemaBasedTerraformToVyosWalker(
-					schema_value.Elem.(map[string]*schema.Schema),
-					subconfig.(map[string]interface{}),
-				)
+				sub_schema_body := schema_body.Elem.(map[string]*schema.Schema)
+				terraform_value_map := terraform_value.(map[string]interface{})
+
+				// Recurse for map
+				if ret, err := helperSchemaBasedTerraformToVyosWalker(sub_schema_body, terraform_value_map); err != nil {
+					// Raise errors to the top if encountered during reccrusion
+					return nil, err
+				} else {
+					return_value[vyos_key] = ret
+				}
+
 			case "TypeList", "TypeSet":
 
-				if schema_value.Type.String() == "TypeList" {
+				var terraform_value_list []interface{}
 
-					subconfig = subconfig.([]interface{})
-				} else if schema_value.Type.String() == "TypeSet" {
-
-					subconfig = subconfig.(*schema.Set).List()
+				// Convert set into list
+				if schema_body.Type.String() == "TypeSet" {
+					log.Printf("[DEBUG] %s: (UPDATE) key: '%s', converting terraform_value from *schema.Set to list", func_name, schema_key)
+					terraform_value_list = terraform_value.(*schema.Set).List()
+				} else {
+					terraform_value_list = terraform_value.([]interface{})
 				}
 
-				for subconfig_idx, subconfig_element := range subconfig.([]interface{}) {
-					log.Printf(
-						"[DEBUG] %s: investigating index '%d'.",
-						func_name, subconfig_idx,
-					)
+				log.Printf("[DEBUG] %s: schema_key '%s' has MaxItems set to '%v'", func_name, schema_key, schema_body.MaxItems)
 
-					var sub_schema map[string]*schema.Schema
-					is_primitive := false
+				// This is if we have a config block, which means schema should have MaxItems set to 1 (I dont know if this is a workaround or the correct way)
+				// The schema would still be a list/set, but VyOS would expect a map/config block, so we recurse.
+				//
+				// Else treat it as a normal list/set
+				if schema_body.MaxItems == 1 {
+					sub_schema_body := schema_body.Elem.(*schema.Resource).Schema
+					log.Printf("[DEBUG] %s: schema_key '%s' terraform_value_tmp '%v'", func_name, schema_key, terraform_value_list)
 
-					switch schema_value.Elem.(type) {
-					case map[string]*schema.Schema:
-						sub_schema = schema_value.Elem.(map[string]*schema.Schema)
-					case *schema.Resource:
-						sub_schema = schema_value.Elem.(*schema.Resource).Schema
-					case *schema.Schema:
-						is_primitive = true
-					default:
-						return nil, fmt.Errorf("[DEBUG] %s: schema for key: '%s' of type: '%T' not handled", func_name, schema_key, schema_value.Elem)
+					// Verify that parameter is set, if not set we get index out of range error
+					if len(terraform_value_list) >= 1 {
+						terraform_sub_value := terraform_value_list[0].(map[string]interface{})
 
+						// Recurse for map
+						if ret, err := helperSchemaBasedTerraformToVyosWalker(sub_schema_body, terraform_sub_value); err != nil {
+							// Raise errors to the top if encountered during reccrusion
+							return nil, err
+						} else {
+							// Do NOT turn the value back into a list so it matches what VyOS expects
+							return_value[vyos_key] = ret
+						}
 					}
 
-					if is_primitive {
-						return_value[schema_key] = helperSchemaTerraformToVyosSetter(
-							schema_value.Elem.(*schema.Schema),
-							subconfig_element,
-						)
-					} else {
-						return_value[schema_key], err = helperSchemaBasedTerraformToVyosWalker(
-							sub_schema,
-							subconfig_element.(map[string]interface{}),
-						)
-					}
+				} else {
 
+					// Loop over each terraform_value (list elements returned configured)
+					for terraform_value_index, terraform_sub_value := range terraform_value_list {
+						log.Printf("[DEBUG] %s: investigating terraform_value_index '%d'.", func_name, terraform_value_index)
+
+						// Loop over each parameter in schema
+						for sub_schema_key, sub_schema_body := range schema_body.Elem.(*schema.Resource).Schema {
+
+							fmt.Printf("[DEBUG] %s: sub_schema_key: '%s' of golang type: '%T' expects schema type: '%s'",
+								func_name, sub_schema_key, sub_schema_body.Elem, sub_schema_body.Type.String(),
+							)
+
+							// Treat each parameter according to their type
+							switch schema_body.Type.String() {
+							case "TypeMap":
+								sub_schema_body := schema_body.Elem.(map[string]*schema.Schema)
+								terraform_sub_value := terraform_sub_value.(map[string]interface{})
+
+								// Recurse for map
+								if ret, err := helperSchemaBasedTerraformToVyosWalker(sub_schema_body, terraform_sub_value); err != nil {
+									// Raise errors to the top if encountered during reccrusion
+									return nil, err
+								} else {
+									// Append the return_value to the list
+									return_value[vyos_key] = append(
+										return_value[vyos_key].([]interface{}),
+										ret,
+									)
+								}
+							default:
+								// TODO can this be recursed by sending schema and such to self, to avoid having 2 blocks handeling default <-> primitive types
+
+								// Append any primitive type to return_value list
+								ret := helperSchemaBasedTerraformToVyosSetter(sub_schema_body, terraform_sub_value)
+								switch sub_schema_body.Type.String() {
+								case "TypeBool":
+									if ret != nil {
+										return_value[vyos_key] = append(
+											return_value[vyos_key].([]interface{}),
+											"",
+										)
+									}
+								default:
+									return_value[vyos_key] = append(
+										return_value[vyos_key].([]interface{}),
+										ret,
+									)
+								}
+							}
+						}
+					}
 				}
 			default:
-				return_value[schema_key] = helperSchemaTerraformToVyosSetter(
-					schema_value,
-					subconfig,
-				)
+				// Append any primitive type to return_value list
+				ret := helperSchemaBasedTerraformToVyosSetter(schema_body, terraform_value)
+				if ret != nil {
+
+					// Cant typecast inside append since the return_value[schema_key] might be nil
+					var return_slot []interface{}
+					if return_value[vyos_key] != nil {
+						return_slot = return_value[vyos_key].([]interface{})
+					}
+
+					switch schema_body.Type.String() {
+					case "TypeBool":
+
+						return_value[vyos_key] = append(
+							return_slot,
+							"",
+						)
+
+					default:
+						return_value[vyos_key] = append(
+							return_slot,
+							ret,
+						)
+					}
+				}
 			}
 		}
 	}
 
-	return return_value, err
+	return return_value, nil
 }
 
-func helperSchemaTerraformToVyosSetter(resource_schema *schema.Schema, config interface{}) interface{} {
+func helperSchemaBasedTerraformToVyosSetter(resource_schema *schema.Schema, config interface{}) interface{} {
 	var return_value interface{}
 
 	// Dumb, but helpful
@@ -254,14 +371,14 @@ func helperSchemaTerraformToVyosSetter(resource_schema *schema.Schema, config in
 	switch resource_schema.Type.String() {
 	case "TypeBool":
 
-		// Do bool check since API returns "key:{}" for true and "" for false, instead of a nice and usefull true/false
+		// ! This needs to be ad-hoc handled where function is called from.... terrible design
 		if config == true {
 			return_value = "true"
 		} else {
 			return_value = ""
 		}
 	case "TypeInt":
-		// ? why did nothing else seem to work, this is such a over engineered converstion of int -> string
+		// TODO why did nothing else seem to work, this is such a over engineered converstion of int -> string
 		return_value = strconv.FormatInt(int64(config.(int)), 10)
 	default:
 		return_value = fmt.Sprintf("%s", config)
@@ -273,9 +390,16 @@ func helperSchemaTerraformToVyosSetter(resource_schema *schema.Schema, config in
 		return_value,
 		return_value,
 	)
+
+	// If the setting is not present return nil so we dont try to configure empty values
+	if return_value == "" {
+		return_value = nil
+	}
 	return return_value
 }
 
+// Takes two terraform style configs
+// Return the difference between the configs as a Terraform Style config, and a []string with deleted parameters
 func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]interface{}) (map[string]interface{}, []string, error) {
 	// Dumb, but helpful
 	pc, _, _, _ := runtime.Caller(0)
@@ -332,12 +456,12 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 				log.Printf("[DEBUG] %s: (UPDATE) key: '%s', loop over list", func_name, key)
 
 				if o_value, ok := old_value.(*schema.Set); ok {
-					old_value = o_value.List()
 					log.Printf("[DEBUG] %s: (UPDATE) key: '%s', converting old_value from *schema.Set to list", func_name, key)
+					old_value = o_value.List()
 				}
 				if n_value, ok := new_value.(*schema.Set); ok {
-					new_value = n_value.List()
 					log.Printf("[DEBUG] %s: (UPDATE) key: '%s', converting new_value from *schema.Set to list", func_name, key)
+					new_value = n_value.List()
 				}
 
 				// deleted values
@@ -347,13 +471,24 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 
 					case map[string]interface{}:
 						log.Printf("[DEBUG] %s: (UPDATE) key: '%s', old_sub_value type: '%T', assume new_value has only 1 element and recurse as map", func_name, key, old_sub_value)
-						ups, dels, err := helperSchemaDiff(old_sub_value.(map[string]interface{}), new_value.([]interface{})[0].(map[string]interface{}))
+
+						new_value_list := new_value.([]interface{})
+						ups, dels, err := helperSchemaDiff(
+							old_sub_value.(map[string]interface{}),
+							new_value_list[0].(map[string]interface{}))
 
 						if err != nil {
 							return nil, nil, fmt.Errorf("[ERROR] %s: error walking through key: '%s'", func_name, key)
 						}
 
-						updates[key] = ups
+						// Cant typecast inside append since the return_value[schema_key] might be nil
+						var update_slot []interface{}
+						if updates[key] != nil {
+							update_slot = updates[key].([]interface{})
+						}
+
+						updates[key] = append(update_slot, ups)
+
 						for _, del := range dels {
 							deletes = append(deletes, fmt.Sprintf("%s %s", key, del))
 						}
@@ -464,13 +599,13 @@ func helperSchemaBasedConfigRead(ctx context.Context, client *client.Client, key
 
 	log.Printf("[DEBUG] %s: Reading tree at key '%s'", func_name, key)
 
-	live_config, err := client.Config.ShowTree(key)
+	vyos_config, err := client.Config.ShowTree(key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Keep only attributes defined in the schema
-	config, err := helperSchemaBasedVyosToTerraformWalker(resource_schema, live_config)
+	config, err := helperSchemaBasedVyosToTerraformWalker(resource_schema, vyos_config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -495,6 +630,7 @@ func helperSchemaBasedConfigRead(ctx context.Context, client *client.Client, key
 #################################################
 */
 
+// TODO add optional parameter for parent_keys []string using same type of key_template to verify required parents
 func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, key_template string, d *schema.ResourceData, resource_schema map[string]*schema.Schema) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -513,18 +649,18 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 
 	// Check if config already exists
 	log.Printf("[DEBUG] %s: Reading tree at key '%s'", func_name, key)
-	live_config, err := client.Config.ShowTree(key)
+	vyos_config, err := client.Config.ShowTree(key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if live_config != nil {
+	if vyos_config != nil {
 		return diag.Errorf("[ERROR] %s: Config path '%s' already exists, try a resource import instead.", func_name, key)
 	}
 
 	tf_config := make(map[string]interface{})
 
-	for k, _ := range resource_schema {
+	for k := range resource_schema {
 		tf_config[k] = d.Get(k)
 	}
 
@@ -558,7 +694,6 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 */
 
 func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, key_template string, d *schema.ResourceData, resource_schema map[string]*schema.Schema) diag.Diagnostics {
-	// ! TODO
 	var diags diag.Diagnostics
 
 	// Dumb, but helpful
@@ -599,15 +734,21 @@ func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, k
 	log.Printf("[DEBUG] %s: old_changed dump: '%v'", func_name, old_changed)
 	log.Printf("[DEBUG] %s: new_changed dump: '%v'", func_name, new_changed)
 
-	updates, dels, err := helperSchemaDiff(old_changed, new_changed)
-	deleted = append(deleted, dels...)
-
+	updates_terraform, dels, err := helperSchemaDiff(old_changed, new_changed)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
+	updates_vyos, err := helperSchemaBasedTerraformToVyosWalker(resource_schema, updates_terraform)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// TODO convert to vyos like updates if possible
+	deleted = append(deleted, dels...)
+
 	config := map[string]interface{}{
-		key: updates,
+		key: updates_vyos,
 	}
 
 	err = client.Config.SetTree(config)
@@ -619,51 +760,6 @@ func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, k
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
-	// var live_delete_attrs []string
-	// live_set_attrs := []interface{}{}
-	// for _, config_field := range helper_config_fields_from_schema(key_template, resource_schema) {
-	// 	if d.HasChanges(config_field) {
-	// 		config_schema_type := resource_schema[config_field].Type
-
-	// 		value, ok := d.GetOk(config_field)
-	// 		live_config_field := strings.Replace(config_field, "_", "-", -1)
-	// 		if ok {
-
-	// 			switch config_schema_type.String() {
-	// 			case "TypeBool":
-	// 				if value == true {
-	// 					live_set_attrs = append(live_set_attrs, live_config_field)
-	// 					continue
-	// 				} else {
-	// 					live_delete_attrs = append(live_delete_attrs, live_config_field)
-	// 					continue
-	// 				}
-	// 			}
-	// 			live_set_attrs = append(live_set_attrs, map[string]interface{}{live_config_field: value})
-	// 		} else {
-	// 			live_delete_attrs = append(live_delete_attrs, live_config_field)
-
-	// 		}
-	// 	}
-	// }
-
-	// live_set_config := map[string]interface{}{
-	// 	key: live_set_attrs,
-	// }
-	// errSet := client.Config.SetTree(live_set_config)
-	// if errSet != nil {
-	// 	return diag.FromErr(errSet)
-	// }
-
-	// var live_delete_keys []string
-	// for _, live_delete_attr := range live_delete_attrs {
-	// 	live_delete_keys = append(live_delete_keys, key+" "+live_delete_attr)
-	// }
-	// errDel := client.Config.Delete(live_delete_keys...)
-	// if errDel != nil {
-	// 	return diag.FromErr(errDel)
-	// }
 
 	return diags
 }
@@ -679,7 +775,8 @@ func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, k
 */
 
 func helperSchemaBasedConfigDelete(ctx context.Context, client *client.Client, key_template string, d *schema.ResourceData, resource_schema map[string]*schema.Schema) diag.Diagnostics {
-	// ! TODO add check for children / configs outside of the schema (recursive? yes!)
+	// TODO add check for children / configs outside of the schema (recursively)
+
 	var diags diag.Diagnostics
 
 	key := helper_key_from_template(key_template, d.Id(), d)

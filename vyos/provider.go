@@ -48,6 +48,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	key := d.Get("key").(string)
 
 	cert := d.Get("cert").(string)
+
+	//lint:ignore SA4006 placeholder
 	c := &client.Client{}
 
 	if cert != "" {
