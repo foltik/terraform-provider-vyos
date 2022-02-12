@@ -79,21 +79,21 @@ func helper_key_from_template(key_template string, id string, d *schema.Resource
 
 	// key_template is a formatable string eg: "firewall name %s rule %s"
 
-	id_pairs := make(map[string]string)
-	var id_keys []string
-	var id_values []interface{}
+	// id_pairs := make(map[string]string)
+	// var id_keys []string
+	// var id_values []interface{}
 
-	for _, id_pair := range strings.Split(id, "|") {
-		log.Printf("[DEBUG] %s: id_par: '%v'", func_name, id_pair)
+	// for _, id_pair := range strings.Split(id, "|") {
+	// 	log.Printf("[DEBUG] %s: id_par: '%v'", func_name, id_pair)
 
-		pair := strings.Split(id_pair, "=")
-		id_key := pair[0]
-		id_value := pair[1]
+	// 	pair := strings.Split(id_pair, "=")
+	// 	id_key := pair[0]
+	// 	id_value := pair[1]
 
-		id_keys = append(id_keys, id_key)
-		id_values = append(id_values, id_value)
-		id_pairs[id_key] = id_value
-	}
+	// 	id_keys = append(id_keys, id_key)
+	// 	id_values = append(id_values, id_value)
+	// 	id_pairs[id_key] = id_value
+	// }
 
 	key := key_template
 	for _, key_field := range helper_key_fields_from_template(key_template) {

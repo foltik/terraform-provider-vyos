@@ -41,10 +41,10 @@ Firewall rules with criteria matching that can be applied to an interface or a z
 
 Optional:
 
-- **address** (List of String) Destination address to match against, can be in format of: [address | addressrange | CIDR]. By starting the field with a ! it will be a negative match.
+- **address** (String) Destination address to match against, can be in format of: `[<x.x.x.x> | <x.x.x.x>-<x.x.x.x> | <x.x.x.x/x>]`. By starting the field with a `!` it will be a negative match.
 - **group** (Block Set) Use a pre-defined group. (see [below for nested schema](#nestedblock--destination--group))
-- **mac_address** (List of String) Destination mac-address to match against. By starting the field with a ! it will be a negative match.
-- **port** (String) A port can be set with a port number or a name which is here defined: `/etc/services`. Multiple destination ports can be specified as a comma-separated list. The whole list can also be “negated” using ‘!’.
+- **mac_address** (String) Destination mac-address to match against. By starting the field with a `!` it will be a negative match.
+- **port** (String) A port can be set with port number in format: `[<xx> | <xx>-<xx>]` or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using `!`.
 
 <a id="nestedblock--destination--group"></a>
 ### Nested Schema for `destination.group`
@@ -62,10 +62,10 @@ Optional:
 
 Optional:
 
-- **address** (List of String) Source address to match against, can be in format of: [address | addressrange | CIDR]. By starting the field with a ! it will be a negative match.
+- **address** (String) Source address to match against, can be in format of: `[<x.x.x.x> | <x.x.x.x>-<x.x.x.x> | <x.x.x.x/x>]`. By starting the field with a `!` it will be a negative match.
 - **group** (Block Set) Use a pre-defined group. (see [below for nested schema](#nestedblock--source--group))
-- **mac_address** (List of String) Source mac-address to match against. By starting the field with a ! it will be a negative match.
-- **port** (String) A port can be set with a port number or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using ‘!’.
+- **mac_address** (String) Source mac-address to match against. By starting the field with a `!` it will be a negative match.
+- **port** (String) A port can be set with port number in format: `[<xx> | <xx>-<xx>]` or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using `!`.
 
 <a id="nestedblock--source--group"></a>
 ### Nested Schema for `source.group`
@@ -83,10 +83,10 @@ Optional:
 
 Optional:
 
-- **established** (String) Match against this state, valied values: `[enable | disable]`
-- **invalid** (String) Match against this state, valied values: `[enable | disable]`
-- **new** (String) Match against this state, valied values: `[enable | disable]`
-- **related** (String) Match against this state, valied values: `[enable | disable]`
+- **established** (String) If this rule should match against the connection state `established`, valied values: `[enable | disable]`
+- **invalid** (String) If this rule should match against the connection state `invalid`, valied values: `[enable | disable]`
+- **new** (String) If this rule should match against the connection state `new`, valied values: `[enable | disable]`
+- **related** (String) If this rule should match against the connection state `related`, valied values: `[enable | disable]`
 
 
 <a id="nestedblock--tcp"></a>

@@ -97,28 +97,25 @@ func resourceFirewallRule() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"established": {
-							Description: "Match against this state, valied values: `[enable | disable]`",
-							Type:        schema.TypeString,
-							Optional:    true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
+							Description:      "If this rule should match against the connection state `established`, valied values: `[enable | disable]`",
+							Type:             schema.TypeString,
+							Optional:         true,
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"enable", "disable"}, false)),
 						},
 						"invalid": {
-							Description:      "Match against this state, valied values: `[enable | disable]`",
+							Description:      "If this rule should match against the connection state `invalid`, valied values: `[enable | disable]`",
 							Type:             schema.TypeString,
 							Optional:         true,
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"enable", "disable"}, false)),
 						},
 						"new": {
-							Description:      "Match against this state, valied values: `[enable | disable]`",
+							Description:      "If this rule should match against the connection state `new`, valied values: `[enable | disable]`",
 							Type:             schema.TypeString,
 							Optional:         true,
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"enable", "disable"}, false)),
 						},
 						"related": {
-							Description:      "Match against this state, valied values: `[enable | disable]`",
+							Description:      "If this rule should match against the connection state `related`, valied values: `[enable | disable]`",
 							Type:             schema.TypeString,
 							Optional:         true,
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"enable", "disable"}, false)),
@@ -135,27 +132,21 @@ func resourceFirewallRule() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"address": {
-							Description: "Source address to match against, can be in format of: [address | addressrange | CIDR]. By starting the field with a ! it will be a negative match.",
-							Type:        schema.TypeList,
+							Description: "Source address to match against, can be in format of: `[<x.x.x.x> | <x.x.x.x>-<x.x.x.x> | <x.x.x.x/x>]`. By starting the field with a `!` it will be a negative match.",
+							Type:        schema.TypeString,
 							Optional:    true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
 							//ValidateDiagFunc: validation.ToDiagFunc(validation.Any(validation.IsIPv4Address, validation.IsIPv4Range, validation.IsCIDR)),
 						},
 						"mac_address": {
-							Description: "Source mac-address to match against. By starting the field with a ! it will be a negative match.",
-							Type:        schema.TypeList,
+							Description: "Source mac-address to match against. By starting the field with a `!` it will be a negative match.",
+							Type:        schema.TypeString,
 							Optional:    true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
 							//ValidateDiagFunc: validation.ToDiagFunc(validation.IsMACAddress),
 						},
 						"port": {
-							Description: "A port can be set with a port number or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using ‘!’.",
+							Description: "A port can be set with port number in format: `[<xx> | <xx>-<xx>]` or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using `!`.",
 							Type:        schema.TypeString,
 							Optional:    true,
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
@@ -197,27 +188,21 @@ func resourceFirewallRule() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"address": {
-							Description: "Destination address to match against, can be in format of: [address | addressrange | CIDR]. By starting the field with a ! it will be a negative match.",
-							Type:        schema.TypeList,
+							Description: "Destination address to match against, can be in format of: `[<x.x.x.x> | <x.x.x.x>-<x.x.x.x> | <x.x.x.x/x>]`. By starting the field with a `!` it will be a negative match.",
+							Type:        schema.TypeString,
 							Optional:    true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
 							//ValidateDiagFunc: validation.ToDiagFunc(validation.Any(validation.IsIPv4Address, validation.IsIPv4Range, validation.IsCIDR)),
 						},
 						"mac_address": {
-							Description: "Destination mac-address to match against. By starting the field with a ! it will be a negative match.",
-							Type:        schema.TypeList,
+							Description: "Destination mac-address to match against. By starting the field with a `!` it will be a negative match.",
+							Type:        schema.TypeString,
 							Optional:    true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
 							//ValidateDiagFunc: validation.ToDiagFunc(validation.IsMACAddress),
 						},
 						"port": {
-							Description: "A port can be set with a port number or a name which is here defined: `/etc/services`. Multiple destination ports can be specified as a comma-separated list. The whole list can also be “negated” using ‘!’.",
+							Description: "A port can be set with port number in format: `[<xx> | <xx>-<xx>]` or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using `!`.",
 							Type:        schema.TypeString,
 							Optional:    true,
 							// Let VyOS do validation, these helers would not be compatible with the ! (not) marker
