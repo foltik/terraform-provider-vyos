@@ -41,8 +41,9 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"vyos_config":              resourceConfig(),
-			"vyos_config_block":        resourceConfigBlock(),
+			"vyos_config":       resourceConfig(),
+			"vyos_config_block": resourceConfigBlock(),
+			//"vyos_firewall_group_address": resourceFirewallGroupAddress(),
 			"vyos_firewall_rule_set":   resourceFirewallRuleSet(),
 			"vyos_firewall_rule":       resourceFirewallRule(),
 			"vyos_static_host_mapping": resourceStaticHostMapping(),
@@ -92,4 +93,45 @@ func (p *ProviderClass) conditionalSave(ctx context.Context) {
 			p.client.Config.SaveFile(ctx, save_file)
 		}
 	}
+}
+
+func delete_me() interface{} {
+	asd := map[string]interface {
+	}{
+		"firewall name set-two rule 4": map[string]interface {
+		}{
+			"action": []interface {
+			}{
+				"drop",
+			}, "description": []interface {
+			}{
+				"rule4_add_and_remove_nested_param",
+			}, "log": []interface {
+			}{
+				"disable",
+			}, "protocol": []interface {
+			}{
+				"tcp",
+			}, "source": map[string]interface {
+			}{
+				"address": []interface {
+				}{
+					"1.1.1.1",
+				}, "group": []interface {
+				}{
+					"map[address_group:Web network_group: port_group:]", "map[address_group:Web network_group: port_group:]", "map[address_group:Web network_group: port_group:]",
+				}, "port": []interface {
+				}{
+					"1337,123",
+				},
+			}, "state": map[string]interface {
+			}{
+				"new": []interface {
+				}{
+					"enable",
+				},
+			},
+		},
+	}
+	return asd
 }
