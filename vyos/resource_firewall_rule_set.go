@@ -41,7 +41,6 @@ func resourceFirewallRuleSet() *schema.Resource {
 			"description": {
 				Description: "Rule-set description text.",
 				Type:        schema.TypeString,
-				Default:     "Manged by Terraform.",
 				Optional:    true,
 			},
 			"default_action": {

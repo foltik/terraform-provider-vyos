@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	ResourceFirewallRuleKeyTemplate = "firewall name {{rule_set}} rule {{priority}}"
+	ResourceFirewallRuleKeyTemplate    = "firewall name {{rule_set}} rule {{priority}}"
+	ResourceFirewallRulePrereqTemplate = "firewall name {{rule_set}}"
 )
 
 func resourceFirewallRule() *schema.Resource {
@@ -26,7 +27,7 @@ func resourceFirewallRule() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The resource ID, same as the `priority`",
+				Description: "The resource ID",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
@@ -156,6 +157,7 @@ func resourceFirewallRule() *schema.Resource {
 							Description: "Use a pre-defined group.",
 							Type:        schema.TypeSet,
 							Optional:    true,
+							MaxItems:    1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"address_group": {
@@ -246,7 +248,7 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m int
 
 func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*client.Client)
-	return helperSchemaBasedConfigCreate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+	return helperSchemaBasedConfigCreate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema, ResourceFirewallRulePrereqTemplate)
 }
 
 func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {

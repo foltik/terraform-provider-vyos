@@ -102,7 +102,11 @@ func helperSchemaBasedVyosToTerraformWalker(resource_schema map[string]*schema.S
 				} else {
 
 					// Loop over each vyos_value (list elements returned from VyOS)
-					for vyos_value_index, vyos_value := range vyos_config[vyos_key].([]interface{}) {
+
+					vyos_value := vyos_config[vyos_key]
+					log.Printf("[DEBUG] %s: vyos_value [type]: '%T' [value]: '%v'", func_name, vyos_value, vyos_value)
+
+					for vyos_value_index, vyos_value := range vyos_value.([]interface{}) {
 						log.Printf("[DEBUG] %s: investigating vyos_value_index '%d'.", func_name, vyos_value_index)
 
 						// Loop over each parameter in schema
@@ -236,9 +240,9 @@ func helperSchemaBasedTerraformToVyosWalker(resource_schema map[string]*schema.S
 				var terraform_value_list []interface{}
 
 				// Convert set into list
-				if schema_body.Type.String() == "TypeSet" {
+				if terraform_value_tmp, ok := terraform_value.(*schema.Set); ok {
 					log.Printf("[DEBUG] %s: (UPDATE) key: '%s', converting terraform_value from *schema.Set to list", func_name, schema_key)
-					terraform_value_list = terraform_value.(*schema.Set).List()
+					terraform_value_list = terraform_value_tmp.List()
 				} else {
 					terraform_value_list = terraform_value.([]interface{})
 				}
@@ -268,57 +272,74 @@ func helperSchemaBasedTerraformToVyosWalker(resource_schema map[string]*schema.S
 					}
 
 				} else {
+					sub_return_value := make(map[string]interface{})
 
 					// Loop over each terraform_value (list elements returned configured)
+					log.Printf("[DEBUG] %s: terraform_value_list '%v'.", func_name, terraform_value_list)
 					for terraform_value_index, terraform_sub_value := range terraform_value_list {
-						log.Printf("[DEBUG] %s: investigating terraform_value_index '%d'.", func_name, terraform_value_index)
+						log.Printf("[DEBUG] %s: terraform_value_index: [type]: '%T' [value]: '%v'", func_name, terraform_value_index, terraform_value_index)
+						log.Printf("[DEBUG] %s: terraform_sub_value: [type]: '%T' [value]: '%v'", func_name, terraform_sub_value, terraform_sub_value)
 
 						// Loop over each parameter in schema
-						for sub_schema_key, sub_schema_body := range schema_body.Elem.(*schema.Resource).Schema {
+						sub_schema := schema_body.Elem.(*schema.Resource).Schema
+						log.Printf("[DEBUG] %s: sub_schema: [type]: '%T' [value]: '%v'", func_name, sub_schema, sub_schema)
+						for sub_schema_key, sub_schema_body := range sub_schema {
 
-							fmt.Printf("[DEBUG] %s: sub_schema_key: '%s' of golang type: '%T' expects schema type: '%s'",
-								func_name, sub_schema_key, sub_schema_body.Elem, sub_schema_body.Type.String(),
+							log.Printf("[DEBUG] %s: sub_schema_key: '%s', expects schema type: '%s'",
+								func_name, sub_schema_key, sub_schema_body.Type.String(),
 							)
+							terraform_sub_value := terraform_sub_value.(map[string]interface{})
+
+							// Convert schema_key that uses "_" to the vyos_key version which uses "-"
+							sub_vyos_key := strings.Replace(sub_schema_key, "_", "-", -1)
+							log.Printf("[DEBUG] %s: investigating sub_schema_key '%s', sub_vyos_key '%s'.", func_name, sub_schema_key, sub_vyos_key)
 
 							// Treat each parameter according to their type
-							switch schema_body.Type.String() {
+							switch sub_schema_body.Type.String() {
 							case "TypeMap":
-								sub_schema_body := schema_body.Elem.(map[string]*schema.Schema)
-								terraform_sub_value := terraform_sub_value.(map[string]interface{})
 
 								// Recurse for map
-								if ret, err := helperSchemaBasedTerraformToVyosWalker(sub_schema_body, terraform_sub_value); err != nil {
+								if ret, err := helperSchemaBasedTerraformToVyosWalker(sub_schema_body.Elem.(*schema.Resource).Schema, terraform_sub_value); err != nil {
 									// Raise errors to the top if encountered during reccrusion
 									return nil, err
 								} else {
-									// Append the return_value to the list
-									return_value[vyos_key] = append(
-										return_value[vyos_key].([]interface{}),
+									// Append the sub_return_value to the list
+									sub_return_value[sub_vyos_key] = append(
+										sub_return_value[sub_vyos_key].([]interface{}),
 										ret,
 									)
 								}
 							default:
 								// TODO can this be recursed by sending schema and such to self, to avoid having 2 blocks handeling default <-> primitive types
 
-								// Append any primitive type to return_value list
-								ret := helperSchemaBasedTerraformToVyosSetter(sub_schema_body, terraform_sub_value)
-								switch sub_schema_body.Type.String() {
-								case "TypeBool":
-									if ret != nil {
-										return_value[vyos_key] = append(
-											return_value[vyos_key].([]interface{}),
-											"",
+								// Append any primitive type to sub_return_value list
+								ret := helperSchemaBasedTerraformToVyosSetter(sub_schema_body, terraform_sub_value[sub_schema_key])
+								if ret != nil {
+
+									// Cant typecast inside append since the sub_return_value[schema_key] might be nil
+									var return_slot []interface{}
+									if sub_return_value[sub_vyos_key] != nil {
+										return_slot = sub_return_value[sub_vyos_key].([]interface{})
+									}
+									switch sub_schema_body.Type.String() {
+									case "TypeBool":
+										if ret != nil {
+											sub_return_value[sub_vyos_key] = append(
+												return_slot,
+												"",
+											)
+										}
+									default:
+										sub_return_value[sub_vyos_key] = append(
+											return_slot,
+											ret,
 										)
 									}
-								default:
-									return_value[vyos_key] = append(
-										return_value[vyos_key].([]interface{}),
-										ret,
-									)
 								}
 							}
 						}
 					}
+					return_value[vyos_key] = sub_return_value
 				}
 			default:
 				// Append any primitive type to return_value list
@@ -410,18 +431,21 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 	deletes := []string{}
 
 	// Merge old and new keys to get a complete key list
+	// Append "old" keys
 	keys := []string{}
 	for key := range old_config {
+		log.Printf("[DEBUG] %s: (keys to inspect) adding (old) key: '%s'", func_name, key)
 		keys = append(keys, key)
 	}
 
+	// Append "new" keys, if they are not already added
 	for key := range new_config {
 		sort.Strings(keys)
 		i := sort.SearchStrings(keys, key)
 		if i < len(keys) && keys[i] == key {
 			log.Printf("[DEBUG] %s: (keys to inspect) already have key: '%s'", func_name, key)
 		} else {
-			log.Printf("[DEBUG] %s: (keys to inspect) adding key: '%s'", func_name, key)
+			log.Printf("[DEBUG] %s: (keys to inspect) adding (new) key: '%s'", func_name, key)
 			keys = append(keys, key)
 		}
 	}
@@ -430,9 +454,18 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 		old_value, old_ok := old_config[key]
 		new_value, new_ok := new_config[key]
 
+		// is there a better way to detect "empty" string values from the terraform resrouce?
+		if old_value == "" {
+			old_ok = false
+		}
+		if new_value == "" {
+			new_ok = false
+		}
+
 		if old_ok && new_ok {
 			// if in old and new: update
 			log.Printf("[DEBUG] %s: (UPDATE) key: '%s', old_value type: '%T', new_value type: '%T'", func_name, key, old_value, new_value)
+			log.Printf("[DEBUG] %s: (UPDATE) key: '%s', old_value value: '%v', new_value value: '%v'", func_name, key, old_value, new_value)
 
 			switch old_value.(type) {
 
@@ -442,11 +475,12 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 				ups, dels, err := helperSchemaDiff(old_value.(map[string]interface{}), new_value.(map[string]interface{}))
 
 				if err != nil {
-					return nil, nil, fmt.Errorf("[ERROR] %s: error walking through key: '%s'", func_name, key)
+					return nil, nil, fmt.Errorf("[ERROR] %s: error walking through key: '%s', '%v'", func_name, key, err)
 				}
 
 				updates[key] = ups
 				for _, del := range dels {
+					log.Printf("[DEBUG] %s: appending delete:'%s %s'", func_name, key, del)
 					deletes = append(deletes, fmt.Sprintf("%s %s", key, del))
 				}
 
@@ -478,7 +512,7 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 							new_value_list[0].(map[string]interface{}))
 
 						if err != nil {
-							return nil, nil, fmt.Errorf("[ERROR] %s: error walking through key: '%s'", func_name, key)
+							return nil, nil, fmt.Errorf("[ERROR] %s: error walking through key: '%s', '%v'", func_name, key, err)
 						}
 
 						// Cant typecast inside append since the return_value[schema_key] might be nil
@@ -490,6 +524,7 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 						updates[key] = append(update_slot, ups)
 
 						for _, del := range dels {
+							log.Printf("[DEBUG] %s: appending delete:'%s %s'", func_name, key, del)
 							deletes = append(deletes, fmt.Sprintf("%s %s", key, del))
 						}
 
@@ -557,9 +592,9 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 
 		} else if old_ok && (!new_ok) {
 			// if in old but not new: deleted
-			log.Printf("[DEBUG] %s: (DELETE) key: '%s', old_value: '%v'", func_name, key, old_value)
+			log.Printf("[DEBUG] %s: (DELETE) key: '%s', old_value: '%v'", func_name, key, old_value) //TODO whole path needed
 
-			deletes = append(deletes, key)
+			deletes = append(deletes, key+" "+old_value.(string))
 			continue
 
 		} else if (!old_ok) && new_ok {
@@ -569,9 +604,17 @@ func helperSchemaDiff(old_config map[string]interface{}, new_config map[string]i
 			updates[key] = new_value
 			continue
 
+		} else if (!old_ok) && (!new_ok) {
+			log.Printf("[DEBUG] %s: (DO NOTHING) key: '%s', new_value: '%v', old_value: '%v'", func_name, key, new_value, old_value)
+			continue
 		} else {
 			return nil, nil, fmt.Errorf("[ERROR] %s: dont know how to handle key: '%s', old_config: '%v', new_config: '%v'", func_name, key, old_config, new_config)
 		}
+	}
+
+	log.Printf("[DEBUG] %s: returning deletes:", func_name)
+	for _, del := range deletes {
+		log.Printf("[DEBUG] %s: '%s'", func_name, del)
 	}
 
 	return updates, deletes, nil
@@ -630,8 +673,7 @@ func helperSchemaBasedConfigRead(ctx context.Context, client *client.Client, key
 #################################################
 */
 
-// TODO add optional parameter for parent_keys []string using same type of key_template to verify required parents
-func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, key_template string, d *schema.ResourceData, resource_schema map[string]*schema.Schema) diag.Diagnostics {
+func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, key_template string, d *schema.ResourceData, resource_schema map[string]*schema.Schema, prerequsite_key_templates ...string) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	// Dumb, but helpful
@@ -647,14 +689,24 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 
 	resource_schema = helperRemoveFieldsFromSchema(remove_fields, resource_schema)
 
+	// Check if required configs / parents / structure exists
+	for _, prereq_template := range prerequsite_key_templates {
+		prereq := helper_key_from_template(prereq_template, id, d)
+		log.Printf("[DEBUG] %s: Looking for pre-requisite key '%s'", func_name, prereq)
+		vyos_prereq_config, err := client.Config.ShowTree(prereq)
+		if vyos_prereq_config == nil {
+			return diag.Errorf("[ERROR] %s: Could not find pre-requisite key '%s'", func_name, prereq)
+		} else if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// Check if config already exists
 	log.Printf("[DEBUG] %s: Reading tree at key '%s'", func_name, key)
 	vyos_config, err := client.Config.ShowTree(key)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	if vyos_config != nil {
+	} else if vyos_config != nil {
 		return diag.Errorf("[ERROR] %s: Config path '%s' already exists, try a resource import instead.", func_name, key)
 	}
 
@@ -744,8 +796,14 @@ func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, k
 		return diag.FromErr(err)
 	}
 
-	// TODO convert to vyos like updates if possible
-	deleted = append(deleted, dels...)
+	deleted_tf := append(deleted, dels...)
+
+	// Convert schema_key that uses "_" to the vyos_key version which uses "-"
+	for _, del_tf := range deleted_tf {
+		del_vyos := strings.Replace(del_tf, "_", "-", -1)
+		log.Printf("[DEBUG] %s: converting delete param from tf: '%s', to vyos: '%s'.", func_name, del_tf, del_vyos)
+		deleted = append(deleted, del_vyos)
+	}
 
 	config := map[string]interface{}{
 		key: updates_vyos,
@@ -780,6 +838,13 @@ func helperSchemaBasedConfigDelete(ctx context.Context, client *client.Client, k
 	var diags diag.Diagnostics
 
 	key := helper_key_from_template(key_template, d.Id(), d)
+
+	// Convert schema_key that uses "_" to the vyos_key version which uses "-"
+	// for _, del_tf := range deleted_tf {
+	// 	del_vyos := strings.Replace(del_tf, "_", "-", -1)
+	// 	log.Printf("[DEBUG] %s: converting delete param from tf: '%s', to vyos: '%s'.", func_name, del_tf, del_vyos)
+	// 	deleted = append(deleted, del_vyos)
+	// }
 
 	errDel := client.Config.Delete(key)
 	if errDel != nil {
