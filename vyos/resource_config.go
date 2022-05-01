@@ -53,7 +53,7 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 	// Dont care about sub config blocks
 	if val != nil {
-		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, val)
+		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, *val)
 	}
 
 	err = c.Config.Set(key, value)
