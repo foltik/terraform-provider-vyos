@@ -241,9 +241,37 @@ func resourceFirewallRule() *schema.Resource {
 	}
 }
 
-func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
 	client := m.(*client.Client)
-	return helperSchemaBasedConfigRead(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+	//return helperSchemaBasedConfigRead(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+
+	resource_schema := resourceFirewallRule().Schema
+	id := helper_format_id(ResourceFirewallRuleKeyTemplate, d)
+	key_string := helper_key_from_template(ResourceFirewallRuleKeyTemplate, id, d)
+	root_vyos_native_config, err := client.Config.ShowTree(key_string)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Create VyOS config struct
+	vyos_key := ConfigKey{key_string}
+	root_vyos_config := ConfigBlock{
+		key: &vyos_key,
+	}
+	vyos_diags_ret := configFromVyos(ctx, &root_vyos_config, resource_schema, root_vyos_native_config)
+	diags = append(diags, vyos_diags_ret...)
+	logF("DEBUG", "root_vyos_config:%#v", root_vyos_config)
+
+	// Create terraform config struct
+	terraform_key := ConfigKey{key_string}
+	root_terraform_config := ConfigBlock{
+		key: &terraform_key,
+	}
+	terraform_diags_ret := configFromTerraform(ctx, &root_terraform_config, resource_schema, d)
+	diags = append(diags, terraform_diags_ret...)
+	logF("DEBUG", "root_vyos_config:%#v", root_vyos_config)
+
+	return diags
 }
 
 func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
