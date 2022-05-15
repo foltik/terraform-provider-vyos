@@ -45,6 +45,7 @@ func resourceStaticHostMappingCreate(ctx context.Context, d *schema.ResourceData
 	}
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
+	conditionalSave(ctx, d, c)
 	return diag.Diagnostics{}
 }
 
@@ -86,6 +87,7 @@ func resourceStaticHostMappingUpdate(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diag.Diagnostics{}
 }
 
@@ -99,5 +101,6 @@ func resourceStaticHostMappingDelete(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diag.Diagnostics{}
 }

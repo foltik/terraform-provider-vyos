@@ -75,7 +75,7 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(path)
-
+	conditionalSave(ctx, d, client)
 	return diags
 }
 
@@ -152,6 +152,7 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(errSet)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diags
 }
 
@@ -166,5 +167,6 @@ func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diags
 }

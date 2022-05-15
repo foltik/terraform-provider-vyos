@@ -62,6 +62,7 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	d.SetId(key)
+	conditionalSave(ctx, d, c)
 	return diags
 }
 
@@ -103,6 +104,7 @@ func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diag.Diagnostics{}
 }
 
@@ -115,5 +117,6 @@ func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
+	conditionalSave(ctx, d, c)
 	return diag.Diagnostics{}
 }

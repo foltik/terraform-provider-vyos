@@ -28,6 +28,15 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"save": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+			"save_file": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"vyos_config":              resourceConfig(),
@@ -60,4 +69,16 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	return c, diag.Diagnostics{}
+}
+
+func conditionalSave(ctx context.Context, d *schema.ResourceData, client *client.Client) {
+	save      := d.Get("save").(bool)
+	save_file := d.Get("save_file").(string)
+
+	if (save) {
+		if save_file == "" {
+			client.Config.SaveWithContext(ctx);
+		}
+		client.Config.SaveFileWithContext(ctx, save_file);
+	}
 }
