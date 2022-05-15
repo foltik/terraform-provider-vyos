@@ -6,8 +6,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
-	"github.com/foltik/vyos-client-go/client"
 )
 
 func resourceConfig() *schema.Resource {
@@ -41,7 +39,8 @@ func resourceConfig() *schema.Resource {
 }
 
 func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	key, value := d.Get("key").(string), d.Get("value").(string)
 
 	var diags diag.Diagnostics
@@ -62,12 +61,13 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	d.SetId(key)
-	conditionalSave(ctx, d, c)
+	p.conditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	key := d.Id()
 
 	// Convert old unix timestamp style ID to key path for existing resources to support importing
@@ -96,7 +96,8 @@ func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	key, value := d.Get("key").(string), d.Get("value").(string)
 
 	err := c.Config.Set(key, value)
@@ -104,12 +105,13 @@ func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	conditionalSave(ctx, d, c)
+	p.conditionalSave(ctx)
 	return diag.Diagnostics{}
 }
 
 func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	key := d.Get("key").(string)
 
 	err := c.Config.Delete(key)
@@ -117,6 +119,6 @@ func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	conditionalSave(ctx, d, c)
+	p.conditionalSave(ctx)
 	return diag.Diagnostics{}
 }

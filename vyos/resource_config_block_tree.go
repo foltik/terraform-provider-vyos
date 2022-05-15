@@ -49,7 +49,8 @@ func resourceConfigBlockTree() *schema.Resource {
 func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	client := m.(*client.Client)
+	p := m.(*ProviderClass)
+	client := *p.client
 	path := d.Get("path").(string)
 
 	// Check if config already exists
@@ -75,14 +76,15 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(path)
-	conditionalSave(ctx, d, client)
+	p.conditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	path := d.Id()
 
 	configsTree, err := c.Config.ShowTree(path)
@@ -120,7 +122,8 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 
 	path := d.Get("path").(string)
 	o, n := d.GetChange("configs")
@@ -152,14 +155,15 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(errSet)
 	}
 
-	conditionalSave(ctx, d, c)
+	p.conditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	path := d.Get("path").(string)
 
 	err := c.Config.Delete(path)
@@ -167,6 +171,6 @@ func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	conditionalSave(ctx, d, c)
+	p.conditionalSave(ctx)
 	return diags
 }
