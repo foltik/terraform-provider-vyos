@@ -31,6 +31,13 @@ func resourceStaticHostMapping() *schema.Resource {
 				Required:    true,
 			},
 		},
+        Timeouts: &schema.ResourceTimeout{
+			Create:  schema.DefaultTimeout(10 * time.Second),
+			Read:    schema.DefaultTimeout(10 * time.Second),
+			Update:  schema.DefaultTimeout(10 * time.Second),
+			Delete:  schema.DefaultTimeout(10 * time.Second),
+			Default: schema.DefaultTimeout(10 * time.Second),
+		},
 	}
 }
 

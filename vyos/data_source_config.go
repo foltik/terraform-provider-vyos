@@ -24,6 +24,10 @@ func dataSourceConfig() *schema.Resource {
 				Computed: true,
 			},
 		},
+        Timeouts: &schema.ResourceTimeout{
+			Read:    schema.DefaultTimeout(10 * time.Second),
+			Default: schema.DefaultTimeout(10 * time.Second),
+		},
 	}
 }
 
@@ -31,7 +35,7 @@ func dataSourceConfigRead(ctx context.Context, d *schema.ResourceData, m interfa
 	c := m.(*client.Client)
 	key := d.Get("key").(string)
 
-	value, err := c.Config.Show(key)
+	value, err := c.Config.ShowWithContext(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}

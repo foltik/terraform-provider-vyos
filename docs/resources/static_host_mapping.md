@@ -31,5 +31,17 @@ resource "vyos_static_host_mapping" "mapping" {
 ### Optional
 
 - **id** (String) The ID of this resource.
+- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- **create** (String)
+- **default** (String)
+- **delete** (String)
+- **read** (String)
+- **update** (String)
 
 

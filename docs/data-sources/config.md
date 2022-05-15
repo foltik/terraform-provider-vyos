@@ -22,9 +22,18 @@ description: |-
 ### Optional
 
 - **id** (String) The ID of this resource.
+- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
 - **value** (String)
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- **default** (String)
+- **read** (String)
 
 

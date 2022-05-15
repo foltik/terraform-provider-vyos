@@ -3,6 +3,7 @@ package vyos
 import (
 	"context"
 	"regexp"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -44,6 +45,13 @@ func resourceConfigBlock() *schema.Resource {
 				ValidateDiagFunc: validation.MapKeyMatch(regexp.MustCompile("^[^ ]+$"), "Config keys can not contain whitespace"),
 			},
 		},
+        Timeouts: &schema.ResourceTimeout{
+			Create:  schema.DefaultTimeout(10 * time.Second),
+			Read:    schema.DefaultTimeout(10 * time.Second),
+			Update:  schema.DefaultTimeout(10 * time.Second),
+			Delete:  schema.DefaultTimeout(10 * time.Second),
+			Default: schema.DefaultTimeout(10 * time.Second),
+		},
 	}
 }
 
@@ -54,7 +62,7 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTree(path)
+	configs, err := client.Config.ShowTreeWithContext(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -77,7 +85,7 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 		commands[path+" "+attr] = val
 	}
 
-	err = client.Config.SetTree(commands)
+	err = client.Config.SetTreeWithContext(ctx, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -93,7 +101,7 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 	c := m.(*client.Client)
 	path := d.Id()
 
-	configs, err := c.Config.ShowTree(path)
+	configs, err := c.Config.ShowTreeWithContext(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -144,7 +152,7 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		}
 	}
 
-	errDel := c.Config.Delete(deleted_attrs...)
+	errDel := c.Config.DeleteWithContext(ctx, deleted_attrs...)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
@@ -154,7 +162,7 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		commands[path+" "+attr] = val
 	}
 
-	errSet := c.Config.SetTree(commands)
+	errSet := c.Config.SetTreeWithContext(ctx, commands)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}
@@ -168,7 +176,7 @@ func resourceConfigBlockDelete(ctx context.Context, d *schema.ResourceData, m in
 	c := m.(*client.Client)
 	path := d.Get("path").(string)
 
-	err := c.Config.Delete(path)
+	err := c.Config.DeleteWithContext(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
