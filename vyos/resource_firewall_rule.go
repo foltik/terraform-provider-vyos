@@ -2,11 +2,14 @@ package vyos
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/config"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
 	"github.com/foltik/vyos-client-go/client"
 )
 
@@ -242,49 +245,60 @@ func resourceFirewallRule() *schema.Resource {
 }
 
 func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	logger.Log("INFO", "Reading resource")
+
 	client := m.(*client.Client)
-	//return helperSchemaBasedConfigRead(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
 
-	resource_schema := resourceFirewallRule().Schema
-	id := helper_format_id(ResourceFirewallRuleKeyTemplate, d)
-	key_string := helper_key_from_template(ResourceFirewallRuleKeyTemplate, id, d)
-	root_vyos_native_config, err := client.Config.ShowTree(key_string)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	resource_schema := resourceFirewallRule()
 
-	// Create VyOS config struct
-	vyos_key := ConfigKey{key_string}
-	root_vyos_config := ConfigBlock{
-		key: &vyos_key,
-	}
-	vyos_diags_ret := configFromVyos(ctx, &root_vyos_config, resource_schema, root_vyos_native_config)
-	diags = append(diags, vyos_diags_ret...)
-	logF("DEBUG", "root_vyos_config:%#v", root_vyos_config)
+	// Key and ID
+	key_template := config.ConfigKeyTemplate{Template: ResourceFirewallRuleKeyTemplate}
+	resouce_id := config.FormatResourceId(key_template, d)
+	key_string := config.FormatKey(key_template, resouce_id, d)
+	key := config.ConfigKey{Key: key_string}
+
+	// Generate config object from VyOS
+	vyos_key := key
+	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resource_schema, client)
+	diags = append(diags, diags_ret...)
 
 	// Create terraform config struct
-	terraform_key := ConfigKey{key_string}
-	root_terraform_config := ConfigBlock{
-		key: &terraform_key,
-	}
-	terraform_diags_ret := configFromTerraform(ctx, &root_terraform_config, resource_schema, d)
-	diags = append(diags, terraform_diags_ret...)
-	logF("DEBUG", "root_vyos_config:%#v", root_vyos_config)
+	terraform_key := key
+	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resource_schema, d)
+	diags = append(diags, diags_ret...)
+
+	vyos_json_data, vyos_err := json.Marshal(vyos_config)
+	tf_json_data, tf_err := json.Marshal(terraform_config)
+
+	logger.Log("DEBUG", "generated vyos config:%#v", vyos_config)
+	logger.Log("DEBUG", "terraform_config:%#v", terraform_config)
+
+	logger.Log("DEBUG", "err: %s, vyos json data: %s\n", vyos_err, vyos_json_data)
+	logger.Log("DEBUG", "err: %s, tf json data: %s\n", tf_err, tf_json_data)
 
 	return diags
 }
 
-func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helperSchemaBasedConfigCreate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema, ResourceFirewallRulePrereqTemplate)
+func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	logger.Log("INFO", "Creating resource")
+	//client := m.(*client.Client)
+	//return helperSchemaBasedConfigCreate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema, ResourceFirewallRulePrereqTemplate)
+
+	return diags
 }
 
-func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helperSchemaBasedConfigUpdate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	logger.Log("INFO", "Updating resource")
+	//client := m.(*client.Client)
+	//return helperSchemaBasedConfigUpdate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+
+	return diags
 }
 
-func resourceFirewallRuleDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helperSchemaBasedConfigDelete(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+func resourceFirewallRuleDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	logger.Log("INFO", "Deleting resource")
+	//client := m.(*client.Client)
+	//return helperSchemaBasedConfigDelete(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema)
+
+	return diags
 }
