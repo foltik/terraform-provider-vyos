@@ -60,7 +60,7 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTreeWithContext(ctx, path)
+	configs, err := client.Config.ShowTree(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -76,7 +76,7 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 		commands[path+" "+attr] = val
 	}
 
-	err = client.Config.SetTreeWithContext(ctx, commands)
+	err = client.Config.SetTree(ctx, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -92,7 +92,7 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 	c := m.(*client.Client)
 	path := d.Id()
 
-	configsTree, err := c.Config.ShowTreeWithContext(ctx, path)
+	configsTree, err := c.Config.ShowTree(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -144,7 +144,7 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
-	errDel := c.Config.DeleteWithContext(ctx, deleted_attrs...)
+	errDel := c.Config.Delete(ctx, deleted_attrs...)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
@@ -154,7 +154,7 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		commands[path+" "+attr] = val
 	}
 
-	errSet := c.Config.SetTreeWithContext(ctx, commands)
+	errSet := c.Config.SetTree(ctx, commands)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}
@@ -168,7 +168,7 @@ func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, 
 	c := m.(*client.Client)
 	path := d.Get("path").(string)
 
-	err := c.Config.DeleteWithContext(ctx, path)
+	err := c.Config.Delete(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}

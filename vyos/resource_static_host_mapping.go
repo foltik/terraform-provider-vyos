@@ -46,7 +46,7 @@ func resourceStaticHostMappingCreate(ctx context.Context, d *schema.ResourceData
 	host, ip := d.Get("host").(string), d.Get("ip").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
-	err := c.Config.Set(path, ip)
+	err := c.Config.Set(ctx, path, ip)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -60,7 +60,7 @@ func resourceStaticHostMappingRead(ctx context.Context, d *schema.ResourceData, 
 	host := d.Get("host").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
-	ip, err := c.Config.Show(path)
+	ip, err := c.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -81,14 +81,14 @@ func resourceStaticHostMappingUpdate(ctx context.Context, d *schema.ResourceData
 	if d.HasChange("host") {
 		old, _ := d.GetChange("host")
 		path := fmt.Sprintf("system static-host-mapping host-name %s", old)
-		err := c.Config.Delete(path)
+		err := c.Config.Delete(ctx, path)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
-	err := c.Config.Set(path, ip)
+	err := c.Config.Set(ctx, path, ip)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -101,7 +101,7 @@ func resourceStaticHostMappingDelete(ctx context.Context, d *schema.ResourceData
 	host := d.Get("host").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s", host)
-	err := c.Config.Delete(path)
+	err := c.Config.Delete(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}

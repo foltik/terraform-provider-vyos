@@ -35,7 +35,7 @@ func dataSourceConfigRead(ctx context.Context, d *schema.ResourceData, m interfa
 	c := m.(*client.Client)
 	key := d.Get("key").(string)
 
-	value, err := c.Config.ShowWithContext(ctx, key)
+	value, err := c.Config.Show(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}

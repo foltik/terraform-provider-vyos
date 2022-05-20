@@ -55,7 +55,7 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 
 	// Check if config already exists
-	val, err := c.Config.ShowWithContext(ctx, key)
+	val, err := c.Config.Show(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -64,7 +64,7 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, *val)
 	}
 
-	err = c.Config.SetWithContext(ctx, key, value)
+	err = c.Config.Set(ctx, key, value)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -90,7 +90,7 @@ func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface
 		}
 	}
 
-	value, err := c.Config.ShowWithContext(ctx, key)
+	value, err := c.Config.Show(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -106,7 +106,7 @@ func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 	c := m.(*client.Client)
 	key, value := d.Get("key").(string), d.Get("value").(string)
 
-	err := c.Config.SetWithContext(ctx, key, value)
+	err := c.Config.Set(ctx, key, value)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -118,7 +118,7 @@ func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interfa
 	c := m.(*client.Client)
 	key := d.Get("key").(string)
 
-	err := c.Config.DeleteWithContext(ctx, key)
+	err := c.Config.Delete(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
