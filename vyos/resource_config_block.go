@@ -8,8 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
-	"github.com/foltik/vyos-client-go/client"
 )
 
 func resourceConfigBlock() *schema.Resource {
@@ -58,7 +56,8 @@ func resourceConfigBlock() *schema.Resource {
 func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	client := m.(*client.Client)
+	p := m.(*ProviderClass)
+	client := *p.client
 	path := d.Get("path").(string)
 
 	// Check if config already exists
@@ -91,14 +90,15 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	d.SetId(path)
-
+	p.conditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	path := d.Id()
 
 	configs, err := c.Config.ShowTree(ctx, path)
@@ -135,7 +135,8 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 
 	path := d.Get("path").(string)
 	o, n := d.GetChange("configs")
@@ -167,13 +168,15 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(errSet)
 	}
 
+	p.conditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	path := d.Get("path").(string)
 
 	err := c.Config.Delete(ctx, path)
@@ -181,5 +184,6 @@ func resourceConfigBlockDelete(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
+	p.conditionalSave(ctx)
 	return diags
 }

@@ -39,3 +39,5 @@ provider "vyos" {
 ### Optional
 
 - **cert** (String)
+- **save** (Boolean) Save after making changes in Vyos
+- **save_file** (String) File to save configuration. Uses config.boot by default.

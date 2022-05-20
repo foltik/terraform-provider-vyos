@@ -28,6 +28,17 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"save": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+				Description: "Save after making changes in Vyos",
+			},
+			"save_file": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "File to save configuration. Uses config.boot by default.",
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"vyos_config":              resourceConfig(),
@@ -40,6 +51,11 @@ func Provider() *schema.Provider {
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
+}
+
+type ProviderClass struct{
+	schema *schema.ResourceData;
+	client *client.Client;
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -59,5 +75,18 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		c = client.NewWithClient(cc, url, key)
 	}
 
-	return c, diag.Diagnostics{}
+	return &ProviderClass{d, c}, diag.Diagnostics{}
+}
+
+func (p *ProviderClass) conditionalSave(ctx context.Context) {
+	save      := p.schema.Get("save").(bool)
+	save_file := p.schema.Get("save_file").(string)
+
+	if (save) {
+		if save_file == "" {
+			p.client.Config.Save(ctx);
+		} else {
+			p.client.Config.SaveFile(ctx, save_file);
+		}
+	}
 }

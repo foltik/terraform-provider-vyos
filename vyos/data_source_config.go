@@ -7,8 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
-	"github.com/foltik/vyos-client-go/client"
 )
 
 func dataSourceConfig() *schema.Resource {
@@ -32,7 +30,8 @@ func dataSourceConfig() *schema.Resource {
 }
 
 func dataSourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(*client.Client)
+	p := m.(*ProviderClass)
+	c := *p.client
 	key := d.Get("key").(string)
 
 	value, err := c.Config.Show(ctx, key)
