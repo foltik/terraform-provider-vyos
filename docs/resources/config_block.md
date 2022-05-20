@@ -42,9 +42,24 @@ resource "vyos_config_block" "allow_sith_supremacy_jedi" {
 - **configs** (Map of String) Key/Value map of config parameters.
 - **path** (String) Config path seperated by spaces.
 
+### Optional
+
+- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+
 ### Read-Only
 
 - **id** (String) The resource ID, same as the `path`
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- **create** (String)
+- **default** (String)
+- **delete** (String)
+- **read** (String)
+- **update** (String)
 
 ## Import
 

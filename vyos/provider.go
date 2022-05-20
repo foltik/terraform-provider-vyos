@@ -55,7 +55,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		// Just allow self signed certificates if a trusted cert isn't specified
 		tr := http.DefaultTransport.(*http.Transport).Clone()
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		cc := &http.Client{Transport: tr, Timeout: 10 * time.Second}
+		cc := &http.Client{Transport: tr, Timeout: 10 * time.Minute}
 		c = client.NewWithClient(cc, url, key)
 	}
 
