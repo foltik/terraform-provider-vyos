@@ -84,9 +84,9 @@ func (p *ProviderClass) conditionalSave(ctx context.Context) {
 
 	if (save) {
 		if save_file == "" {
-			p.client.Config.SaveWithContext(ctx);
+			p.client.Config.Save(ctx);
 		} else {
-			p.client.Config.SaveFileWithContext(ctx, save_file);
+			p.client.Config.SaveFile(ctx, save_file);
 		}
 	}
 }
