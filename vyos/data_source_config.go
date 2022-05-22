@@ -23,8 +23,8 @@ func dataSourceConfig() *schema.Resource {
 			},
 		},
         Timeouts: &schema.ResourceTimeout{
-			Read:    schema.DefaultTimeout(10 * time.Second),
-			Default: schema.DefaultTimeout(10 * time.Second),
+			Read:    schema.DefaultTimeout(10 * time.Minute),
+			Default: schema.DefaultTimeout(10 * time.Minute),
 		},
 	}
 }

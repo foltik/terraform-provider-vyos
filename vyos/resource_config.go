@@ -37,11 +37,11 @@ func resourceConfig() *schema.Resource {
 			},
 		},
         Timeouts: &schema.ResourceTimeout{
-			Create:  schema.DefaultTimeout(10 * time.Second),
-			Read:    schema.DefaultTimeout(10 * time.Second),
-			Update:  schema.DefaultTimeout(10 * time.Second),
-			Delete:  schema.DefaultTimeout(10 * time.Second),
-			Default: schema.DefaultTimeout(10 * time.Second),
+			Create:  schema.DefaultTimeout(10 * time.Minute),
+			Read:    schema.DefaultTimeout(10 * time.Minute),
+			Update:  schema.DefaultTimeout(10 * time.Minute),
+			Delete:  schema.DefaultTimeout(10 * time.Minute),
+			Default: schema.DefaultTimeout(10 * time.Minute),
 		},
 	}
 }
