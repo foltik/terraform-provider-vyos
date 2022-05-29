@@ -5,3 +5,4 @@ vendor/
 *.tfstate.*
 .terraform.lock.hcl
 terraform-provider-vyos
+__debug_bin
