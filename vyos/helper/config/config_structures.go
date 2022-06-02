@@ -80,13 +80,13 @@ func (cfg *ConfigBlock) AddValue(value_type schema.ValueType, value string) {
 }
 
 // Child configs
-func (cfg *ConfigBlock) AddChild(key *ConfigKey) *ConfigBlock {
+func (cfg *ConfigBlock) CreateChild(key *ConfigKey) *ConfigBlock {
 	if cfg.children == nil {
 		logger.Log("TRACE", "{%s} Initializing child map", cfg.key)
 		cfg.children = make(map[*ConfigKey]*ConfigBlock)
 	}
 
-	logger.Log("TRACE", "{%s} Adding child: %s", cfg.key, key)
+	logger.Log("TRACE", "{%s} Creating child: %s", cfg.key, key)
 
 	new_child := &ConfigBlock{
 		parent: cfg,
@@ -96,6 +96,18 @@ func (cfg *ConfigBlock) AddChild(key *ConfigKey) *ConfigBlock {
 	cfg.children[key] = new_child
 
 	return new_child
+}
+
+func (cfg *ConfigBlock) AddChild(child *ConfigBlock) {
+	if cfg.children == nil {
+		logger.Log("TRACE", "{%s} Initializing child map", cfg.key)
+		cfg.children = make(map[*ConfigKey]*ConfigBlock)
+	}
+
+	logger.Log("TRACE", "{%s} Adding child: %s", cfg.key, child.key)
+
+	child.parent = cfg
+	cfg.children[child.key] = child
 }
 
 func (cfg *ConfigBlock) FindChild(full_key string) (child *ConfigBlock, has_child bool) {
@@ -114,14 +126,16 @@ func (cfg *ConfigBlock) FindChild(full_key string) (child *ConfigBlock, has_chil
 	return nil, false
 }
 
-func (cfg *ConfigBlock) GetChild(key *ConfigKey) (child *ConfigBlock, has_child bool) {
+func (cfg *ConfigBlock) GetChild(key string) (child *ConfigBlock, has_child bool) {
 	logger.Log("TRACE", "{%s} Fetching child: %s", cfg.key, key)
 
-	if child, has_child = cfg.children[key]; has_child {
-		return child, has_child
-	} else {
-		return nil, false
+	for child_key, child := range cfg.children {
+		if child_key.Key == key {
+			return child, true
+		}
 	}
+
+	return nil, false
 }
 
 func (cfg *ConfigBlock) GetChildren() (children map[*ConfigKey]*ConfigBlock, has_child bool) {
@@ -336,72 +350,150 @@ func (cfg *ConfigBlock) MarshalVyos() map[string]interface{} {
 func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *ConfigBlock, missing *ConfigBlock) {
 	// Return config that represents changed (+ new) and missing parameters of this config when compared to compare_config
 
-	logger.Log("TRACE", "{%s} MarshalVyos", cfg.key)
+	logger.Log("TRACE", "{%s} GetDifference", cfg.key)
+
+	// Keep track if we have added anything with these horrible extra booleans
+	changed_used := false
+	if changed == nil {
+		changed = &ConfigBlock{
+			key: cfg.key,
+		}
+	}
+
+	missing_used := false
+	if missing == nil {
+		missing = &ConfigBlock{
+			key: cfg.key,
+		}
+	}
 
 	// Find missing values
-	for _, compare_val := range compare_config.values {
-		found_val := false
+	logger.Log("TRACE", "{%s} GetDifference, find missing values", cfg.key)
+	if compare_vals, ok := compare_config.GetValues(); ok {
+		for _, compare_val := range compare_vals {
+			found_val := false
 
-		for _, self_val := range cfg.values {
+			for _, self_val := range cfg.values {
 
-			if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
-				logger.Log("TRACE", "Both has value {%s}", self_val.value)
-				found_val = true
-				break
+				if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
+					logger.Log("TRACE", "Both has value {%s}", self_val.value)
+					found_val = true
+					break
+				}
 			}
-		}
 
-		if !found_val {
-			logger.Log("TRACE", "Missing val {%s}", compare_val.value)
-			missing.AddValue(compare_val.value_type, compare_val.value)
+			if !found_val {
+				logger.Log("TRACE", "Missing val {%s}", compare_val.value)
+				missing.AddValue(compare_val.value_type, compare_val.value)
+				missing_used = true
+			}
 		}
 	}
 
 	// Find new values
-	for _, self_val := range cfg.values {
-		found_val := false
+	logger.Log("TRACE", "{%s} GetDifference, find new values", cfg.key)
+	if self_vals, ok := cfg.GetValues(); ok {
+		for _, self_val := range self_vals {
+			found_val := false
 
-		for _, compare_val := range compare_config.values {
+			for _, compare_val := range compare_config.values {
 
-			if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
-				logger.Log("TRACE", "Both has value {%s}", self_val.value)
-				found_val = true
-				break
+				if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
+					logger.Log("TRACE", "Both has value {%s}", self_val.value)
+					found_val = true
+					break
+				}
 			}
-		}
 
-		if !found_val {
-			logger.Log("TRACE", "New val {%s}", self_val.value)
-			changed.AddValue(self_val.value_type, self_val.value)
+			if !found_val {
+				logger.Log("TRACE", "New val {%s}", self_val.value)
+				changed.AddValue(self_val.value_type, self_val.value)
+				changed_used = true
+			}
 		}
 	}
 
+	// Help debugging by printing childrens keys
+	self_keys := make([]string, len(cfg.children))
+	for k := range cfg.children {
+		self_keys = append(self_keys, k.Key)
+	}
+	logger.Log("DEBUG", "self children: %v", self_keys)
+
+	compare_keys := make([]string, len(compare_config.children))
+	for k := range compare_config.children {
+		compare_keys = append(compare_keys, k.Key)
+	}
+	logger.Log("DEBUG", "compare children: %v", compare_keys)
+
 	// Find missing children
+	logger.Log("TRACE", "{%s} GetDifference, find missing children", cfg.key)
 	if compare_children, ok := compare_config.GetChildren(); ok {
-		//for compare_child_key, compare_child_val := range compare_children {
-		for compare_child_key := range compare_children {
+		for compare_child_key, compare_child_val := range compare_children {
 
 			found_child := false
 
-			if self_children, ok := cfg.GetChildren(); ok {
-
-				if self_child, ok := self_children[compare_child_key]; ok {
-					logger.Log("TRACE", "Both has child {%s}", self_child.key)
-					found_child = true
-					continue
-				}
+			if self_child, ok := cfg.GetChild(compare_child_key.Key); ok {
+				logger.Log("TRACE", "Both has child {%s}", self_child.key)
+				found_child = true
+				continue
 			}
 
 			if !found_child {
 				logger.Log("TRACE", "Missing child {%s}", compare_child_key)
-				//missing.AddChild()
+				missing.AddChild(compare_child_val)
+				missing_used = true
 			}
 		}
 	}
 
 	// Find new children
+	logger.Log("TRACE", "{%s} GetDifference, find new children", cfg.key)
+	if self_children, ok := cfg.GetChildren(); ok {
+		for self_child_key, self_child_val := range self_children {
 
-	// Recurse children
+			found_child := false
 
+			if compare_child, ok := compare_config.GetChild(self_child_key.Key); ok {
+				logger.Log("TRACE", "Both has child {%s}", compare_child.key)
+				found_child = true
+				continue
+			}
+
+			if !found_child {
+				logger.Log("TRACE", "New child {%s}", self_child_key)
+				changed.AddChild(self_child_val)
+				changed_used = true
+			}
+		}
+	}
+
+	// Recurse into own children, compare children should either be in this list, or in the missing list
+	logger.Log("TRACE", "{%s} GetDifference, recurse operation into children", cfg.key)
+	if self_children, ok := cfg.GetChildren(); ok {
+		for self_child_key, self_child_val := range self_children {
+			if compare_child, ok := compare_config.GetChild(self_child_key.Key); ok {
+
+				child_changed, child_missing := self_child_val.GetDifference(compare_child)
+
+				if child_changed != nil {
+					changed.AddChild(child_changed)
+					changed_used = true
+				}
+
+				if child_missing != nil {
+					missing.AddChild(child_missing)
+					missing_used = true
+				}
+			}
+		}
+	}
+
+	if !changed_used {
+		changed = nil
+	}
+	if !missing_used {
+		missing = nil
+	}
 	return changed, missing
 }
