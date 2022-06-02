@@ -74,7 +74,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 			// Handle simple native types here
 
 			if vyos_native_config, ok := parent_vyos_native_config.(string); ok {
-				config_block.AddValue(vyos_native_config)
+				config_block.AddValue(resource_schema.Type, vyos_native_config)
 			} else {
 				// Make unhandled cases visible
 				logger.Log("ERROR", "(key: %s)resource_schema is unhandled: %#v", config_block.key.Key, resource_schema)
@@ -86,7 +86,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 			logger.Log("TRACE", "Should be bool: parent_vyos_native_config: %#v", parent_vyos_native_config)
 
 			if _, ok := parent_vyos_native_config.(map[string]interface{}); ok {
-				config_block.AddValue("true")
+				config_block.AddValue(resource_schema.Type, "true")
 			} else {
 				// Make unhandled cases visible
 				logger.Log("ERROR", "(key: %s)resource_schema is unhandled: %#v", config_block.key.Key, resource_schema)
@@ -216,7 +216,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 
 		switch resource_schema.Type {
 		case schema.TypeBool:
-			config_block.AddValue(strconv.FormatBool(terraform_native_config.(bool)))
+			config_block.AddValue(resource_schema.Type, strconv.FormatBool(terraform_native_config.(bool)))
 
 		case schema.TypeInt:
 			var i int64
@@ -230,11 +230,11 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 				diags = append(diags, diag.Errorf("(key: %s)resource_schema is unhandled: %#v, not int or int64", config_block.key.Key, resource_schema)...)
 			}
 
-			config_block.AddValue(strconv.FormatInt(i, 10))
+			config_block.AddValue(resource_schema.Type, strconv.FormatInt(i, 10))
 
 		case schema.TypeFloat:
 			if f, ok := terraform_native_config.(float64); ok {
-				config_block.AddValue(strconv.FormatFloat(f, 'f', -1, 64))
+				config_block.AddValue(resource_schema.Type, strconv.FormatFloat(f, 'f', -1, 64))
 			} else {
 				logger.Log("ERROR", "(key: %s)resource_schema is unhandled: %#v, not float", config_block.key.Key, resource_schema)
 				diags = append(diags, diag.Errorf("(key: %s)resource_schema is unhandled: %#v, not float64", config_block.key.Key, resource_schema)...)
@@ -244,7 +244,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 
 			if terraform_native_config, ok := terraform_native_config.(string); ok {
 				if terraform_native_config != "" {
-					config_block.AddValue(terraform_native_config)
+					config_block.AddValue(resource_schema.Type, terraform_native_config)
 				}
 			} else {
 				// Make unhandled cases visible

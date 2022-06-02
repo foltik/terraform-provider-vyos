@@ -2,8 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Implement some interfaces to help sort it all
@@ -36,7 +38,8 @@ type ConfigBlock struct {
 // Allow easy access from value to config block instead of using a plain string
 type ConfigValue struct {
 	config_block *ConfigBlock
-	value        *string
+	value_type   schema.ValueType
+	value        string
 }
 
 // Config keys
@@ -51,12 +54,22 @@ func (cfg *ConfigBlock) GetFullConfigKey() (full_key string) {
 }
 
 // Config Values
-func (cfg *ConfigBlock) AddValue(value string) {
+func (cfg *ConfigBlock) AddValue(value_type schema.ValueType, value string) {
 	logger.Log("TRACE", "{%s} Adding value: %s", cfg.key, value)
+
+	switch value_type {
+	case schema.TypeBool:
+	case schema.TypeFloat:
+	case schema.TypeInt:
+	case schema.TypeString:
+	default:
+		logger.Log("ERROR", "{%s} Value: %s has type: %d which is unknown and might case issues.", cfg.key, value, value_type)
+	}
 
 	config_v := ConfigValue{
 		config_block: cfg,
-		value:        &value,
+		value_type:   value_type,
+		value:        value,
 	}
 
 	if cfg.values == nil {
@@ -67,7 +80,7 @@ func (cfg *ConfigBlock) AddValue(value string) {
 }
 
 // Child configs
-func (cfg *ConfigBlock) AddChild(key *ConfigKey, values ...string) *ConfigBlock {
+func (cfg *ConfigBlock) AddChild(key *ConfigKey) *ConfigBlock {
 	if cfg.children == nil {
 		logger.Log("TRACE", "{%s} Initializing child map", cfg.key)
 		cfg.children = make(map[*ConfigKey]*ConfigBlock)
@@ -78,10 +91,6 @@ func (cfg *ConfigBlock) AddChild(key *ConfigKey, values ...string) *ConfigBlock 
 	new_child := &ConfigBlock{
 		parent: cfg,
 		key:    key,
-	}
-
-	for _, val := range values {
-		new_child.AddValue(val)
 	}
 
 	cfg.children[key] = new_child
@@ -163,19 +172,49 @@ func (cfg *ConfigBlock) GetValuesRecursive() (values []ConfigValue, has_values b
 	return nil, false
 }
 
-// Json compatability
 func (cfg *ConfigBlock) convertTreeToNative() map[string]interface{} {
 	logger.Log("TRACE", "{%s} Converting to a tree of golang native types", cfg.key)
 
 	var return_values []interface{}
 
+	// Handle own values
 	if self_values, ok := cfg.GetValues(); ok {
 		for idx, value := range self_values {
 			logger.Log("TRACE", "idx: %d, value: %s", idx, value.value)
-			return_values = append(return_values, value.value)
+			var val interface{}
+			switch value.value_type {
+			case schema.TypeBool:
+				if value.value == "true" {
+					val = true
+				} else if value.value == "false" {
+					val = false
+				} else {
+					logger.Log("ERROR", "idx: %d, value: %s, does not match bool 'true' or 'false'. Setting to 'false'.", idx, value.value)
+					val = false
+				}
+			case schema.TypeFloat:
+				if f, err := strconv.ParseFloat(value.value, 32); err == nil {
+					val = f
+				}
+				if f, err := strconv.ParseFloat(value.value, 64); err == nil {
+					val = f
+				}
+			case schema.TypeInt:
+				i, err := strconv.ParseInt(value.value, 10, 64)
+				if err == nil {
+					val = i
+				} else {
+					logger.Log("ERROR", "idx: %d, value: %s, unable to convert to int.", idx, value.value)
+				}
+			case schema.TypeString:
+				val = value.value
+			}
+
+			return_values = append(return_values, val)
 		}
 	}
 
+	// Recurse for children / sub configs
 	if children, ok := cfg.GetChildren(); ok {
 		for key, child := range children {
 			logger.Log("TRACE", "child: %s", key)
@@ -184,6 +223,7 @@ func (cfg *ConfigBlock) convertTreeToNative() map[string]interface{} {
 		}
 	}
 
+	// Set the config key as the map key
 	data := map[string]interface{}{
 		cfg.key.Key: return_values,
 	}
@@ -194,6 +234,8 @@ func (cfg *ConfigBlock) convertTreeToNative() map[string]interface{} {
 }
 
 func (cfg *ConfigBlock) MarshalJSON() ([]byte, error) {
+	// Make object JSON marshalable
+
 	logger.Log("TRACE", "{%s} MarshalJSON", cfg.key)
 
 	j, err := json.Marshal(cfg.convertTreeToNative())
@@ -201,4 +243,165 @@ func (cfg *ConfigBlock) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	return j, nil
+}
+
+func (cfg *ConfigBlock) MarshalTerraform() map[string]interface{} {
+	// Return an object that can be used with schema.ResourceData.set() function
+
+	logger.Log("TRACE", "{%s} MarshalTerraform", cfg.key)
+
+	tf := cfg.convertTreeToNative()
+	return tf
+}
+
+func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
+	// Needs to remove config parameters that are boolean == false
+
+	logger.Log("TRACE", "{%s} Converting to a tree of vyos client compatible style golang types", cfg.key)
+
+	var return_values []interface{}
+
+	// Handle own values (skip bool = false)
+	if self_values, ok := cfg.GetValues(); ok {
+		for idx, value := range self_values {
+			logger.Log("TRACE", "idx: %d, type: %d, value: %s", idx, value.value_type, value.value)
+			var val interface{}
+			switch value.value_type {
+			case schema.TypeBool:
+				if value.value == "true" {
+					val = true
+				} else if value.value == "false" {
+					continue
+				} else {
+					logger.Log("ERROR", "idx: %d, value: %s, does not match bool 'true' or 'false'. Setting to 'false'.", idx, value.value)
+					continue
+				}
+			case schema.TypeFloat:
+				if f, err := strconv.ParseFloat(value.value, 32); err == nil {
+					val = f
+				}
+				if f, err := strconv.ParseFloat(value.value, 64); err == nil {
+					val = f
+				}
+			case schema.TypeInt:
+				i, err := strconv.ParseInt(value.value, 10, 64)
+				if err == nil {
+					val = i
+				} else {
+					logger.Log("ERROR", "idx: %d, value: %s, unable to convert to int.", idx, value.value)
+				}
+			case schema.TypeString:
+				val = value.value
+			}
+
+			return_values = append(return_values, val)
+		}
+	}
+
+	// Recurse for children (skip nil as that would be bool = false)
+	if children, ok := cfg.GetChildren(); ok {
+		for key, child := range children {
+			logger.Log("TRACE", "child: %s", key)
+			child_values := child.convertTreeToVyos()
+			if child_values != nil {
+				return_values = append(return_values, child_values)
+			} else {
+				logger.Log("TRACE", "child: %s was nil, possible boolean set to false.", key)
+			}
+		}
+	}
+
+	// Do not return a map if return valies = nil since that means we were a bool = false
+	if return_values != nil {
+		data := map[string]interface{}{
+			cfg.key.Key: return_values,
+		}
+		logger.Log("TRACE", "{%s} returning result '%#v'", cfg.key, data)
+		return data
+	} else {
+		logger.Log("TRACE", "{%s} returning nil", cfg.key)
+		return nil
+	}
+}
+
+func (cfg *ConfigBlock) MarshalVyos() map[string]interface{} {
+	// Return object that can be used with vyos client to create / set configs
+
+	logger.Log("TRACE", "{%s} MarshalVyos", cfg.key)
+
+	vy := cfg.convertTreeToVyos()
+	return vy
+}
+
+func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *ConfigBlock, missing *ConfigBlock) {
+	// Return config that represents changed (+ new) and missing parameters of this config when compared to compare_config
+
+	logger.Log("TRACE", "{%s} MarshalVyos", cfg.key)
+
+	// Find missing values
+	for _, compare_val := range compare_config.values {
+		found_val := false
+
+		for _, self_val := range cfg.values {
+
+			if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
+				logger.Log("TRACE", "Both has value {%s}", self_val.value)
+				found_val = true
+				break
+			}
+		}
+
+		if !found_val {
+			logger.Log("TRACE", "Missing val {%s}", compare_val.value)
+			missing.AddValue(compare_val.value_type, compare_val.value)
+		}
+	}
+
+	// Find new values
+	for _, self_val := range cfg.values {
+		found_val := false
+
+		for _, compare_val := range compare_config.values {
+
+			if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
+				logger.Log("TRACE", "Both has value {%s}", self_val.value)
+				found_val = true
+				break
+			}
+		}
+
+		if !found_val {
+			logger.Log("TRACE", "New val {%s}", self_val.value)
+			changed.AddValue(self_val.value_type, self_val.value)
+		}
+	}
+
+	// Find missing children
+	if compare_children, ok := compare_config.GetChildren(); ok {
+		//for compare_child_key, compare_child_val := range compare_children {
+		for compare_child_key := range compare_children {
+
+			found_child := false
+
+			if self_children, ok := cfg.GetChildren(); ok {
+
+				if self_child, ok := self_children[compare_child_key]; ok {
+					logger.Log("TRACE", "Both has child {%s}", self_child.key)
+					found_child = true
+					continue
+				}
+			}
+
+			if !found_child {
+				logger.Log("TRACE", "Missing child {%s}", compare_child_key)
+				//missing.AddChild()
+			}
+		}
+	}
+
+	// Find new children
+
+	// Recurse children
+
+	return changed, missing
 }
