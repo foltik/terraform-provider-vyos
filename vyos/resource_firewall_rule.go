@@ -276,6 +276,9 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m int
 	logger.Log("DEBUG", "err: %s, vyos json data: %s\n", vyos_err, vyos_json_data)
 	logger.Log("DEBUG", "err: %s, tf json data: %s\n", tf_err, tf_json_data)
 
+	logger.Log("DEBUG", "vyos VyOS marshal data: %v\n", vyos_config.MarshalVyos())
+	logger.Log("DEBUG", "tf VyOS marshal data: %v\n", terraform_config.MarshalVyos())
+
 	return diags
 }
 
