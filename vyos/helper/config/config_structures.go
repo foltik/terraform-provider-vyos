@@ -305,7 +305,7 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 		return response
 
 	case schema.TypeSet:
-		response := []*schema.Set{}
+		response := []interface{}{}
 
 		// Check for values
 		if values, ok := cfg.GetValues(); ok {
