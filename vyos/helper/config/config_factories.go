@@ -55,7 +55,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 			// If VyOS has this parameter set create config object and populate it
 			if vyos_config, ok := parent_vyos_config[vyos_key_string]; ok {
 				key := ConfigKey{key_string}
-				child_config := config_block.CreateChild(&key)
+				child_config := config_block.CreateChild(&key, parameter_schema.Type)
 				child_diags := vyosWalker(ctx, child_config, parameter_schema, vyos_config)
 				diags = append(diags, child_diags...)
 			} else {
@@ -120,7 +120,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 						// If VyOS has this parameter set create config object and populate it
 						if vyos_config, ok := parent_vyos_config[vyos_key_string]; ok {
 							key := ConfigKey{key_string}
-							sub_config := config_block.CreateChild(&key)
+							sub_config := config_block.CreateChild(&key, schema.Type)
 							sub_diags := vyosWalker(ctx, sub_config, schema, vyos_config)
 							diags = append(diags, sub_diags...)
 						} else {
@@ -163,7 +163,7 @@ func NewConfigFromTerraform(ctx context.Context, vyos_key *ConfigKey, resource_s
 
 	for parameter_key, parameter_schema := range resource_schema.Schema {
 		if terraform_native_config, ok := data.GetOk(parameter_key); ok {
-			parameter_config_block := config_block.CreateChild(&ConfigKey{Key: parameter_key})
+			parameter_config_block := config_block.CreateChild(&ConfigKey{Key: parameter_key}, parameter_schema.Type)
 
 			diags_ret := terraformWalker(ctx, parameter_config_block, parameter_schema, terraform_native_config)
 			diags = append(diags, diags_ret...)
@@ -197,7 +197,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 
 				if terraform_sub_config != "" && terraform_sub_config != nil {
 					key := ConfigKey{key_string}
-					sub_config := config_block.CreateChild(&key)
+					sub_config := config_block.CreateChild(&key, parameter_schema.Type)
 					sub_diags := terraformWalker(ctx, sub_config, parameter_schema, terraform_sub_config)
 					diags = append(diags, sub_diags...)
 				} else {
@@ -288,7 +288,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 
 							if terraform_sub_config != "" && terraform_sub_config != nil {
 								key := ConfigKey{key_string}
-								sub_config := config_block.CreateChild(&key)
+								sub_config := config_block.CreateChild(&key, parameter_schema.Type)
 								sub_diags := terraformWalker(ctx, sub_config, parameter_schema, terraform_sub_config)
 								diags = append(diags, sub_diags...)
 							} else {
