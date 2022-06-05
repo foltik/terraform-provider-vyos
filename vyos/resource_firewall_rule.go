@@ -296,8 +296,48 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m int
 
 func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Creating resource")
-	//client := m.(*client.Client)
-	//return helperSchemaBasedConfigCreate(ctx, client, ResourceFirewallRuleKeyTemplate, d, resourceFirewallRule().Schema, ResourceFirewallRulePrereqTemplate)
+
+	client := m.(*client.Client)
+
+	resource_schema := resourceFirewallRule()
+
+	// Key and ID
+	key_template := config.ConfigKeyTemplate{Template: ResourceFirewallRuleKeyTemplate}
+	resouce_id := config.FormatResourceId(key_template, d)
+	key_string := config.FormatKey(key_template, resouce_id, d)
+	key := config.ConfigKey{Key: key_string}
+
+	// Generate config object from VyOS
+	// vyos_key := key
+	// vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resource_schema, client)
+	// diags = append(diags, diags_ret...)
+
+	// Create terraform config struct
+	terraform_key := key
+	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resource_schema, d)
+	diags = append(diags, diags_ret...)
+
+	// vyos_json_data, vyos_err := json.Marshal(vyos_config)
+	// tf_json_data, tf_err := json.Marshal(terraform_config)
+
+	// logger.Log("DEBUG", "generated vyos config:%#v", vyos_config)
+	// logger.Log("DEBUG", "terraform_config:%#v", terraform_config)
+
+	// logger.Log("DEBUG", "err: %s, vyos json data: %s\n", vyos_err, vyos_json_data)
+	// logger.Log("DEBUG", "err: %s, tf json data: %s\n", tf_err, tf_json_data)
+
+	// logger.Log("DEBUG", "vyos VyOS marshal data: %v\n", vyos_config.MarshalVyos())
+	// logger.Log("DEBUG", "tf VyOS marshal data: %v\n", terraform_config.MarshalVyos())
+
+	// new_or_changed, deleted := terraform_config.GetDifference(vyos_config)
+
+	// new_or_changed_json, new_or_changed_err := json.Marshal(new_or_changed)
+	// deleted_json, deleted_err := json.Marshal(deleted)
+
+	// logger.Log("DEBUG", "new_or_changed err: %s, json data: %s\n", new_or_changed_err, new_or_changed_json)
+	// logger.Log("DEBUG", "deleted err: %s, json data: %s\n", deleted_err, deleted_json)
+
+	client.Config.SetTree(terraform_config.MarshalVyos())
 
 	return diags
 }
