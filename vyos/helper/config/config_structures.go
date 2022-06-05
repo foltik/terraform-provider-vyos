@@ -31,6 +31,8 @@ type ConfigBlock struct {
 	parent *ConfigBlock
 	key    *ConfigKey
 
+	resource_type schema.ValueType
+
 	values   []ConfigValue
 	children map[*ConfigKey]*ConfigBlock
 }
@@ -40,6 +42,42 @@ type ConfigValue struct {
 	config_block *ConfigBlock
 	value_type   schema.ValueType
 	value        string
+}
+
+func (value *ConfigValue) getValueNative() interface{} {
+	// Return golang native version of value
+
+	var val interface{}
+
+	switch value.value_type {
+	case schema.TypeBool:
+		if value.value == "true" {
+			val = true
+		} else if value.value == "false" {
+			val = false
+		} else {
+			logger.Log("ERROR", "value: %s, does not match bool 'true' or 'false'. Setting to 'false'.", value.value)
+			val = false
+		}
+	case schema.TypeFloat:
+		if f, err := strconv.ParseFloat(value.value, 32); err == nil {
+			val = f
+		}
+		if f, err := strconv.ParseFloat(value.value, 64); err == nil {
+			val = f
+		}
+	case schema.TypeInt:
+		i, err := strconv.ParseInt(value.value, 10, 64)
+		if err == nil {
+			val = i
+		} else {
+			logger.Log("ERROR", "value: %s, unable to convert to int.", value.value)
+		}
+	case schema.TypeString:
+		val = value.value
+	}
+
+	return val
 }
 
 // Config keys
@@ -80,7 +118,7 @@ func (cfg *ConfigBlock) AddValue(value_type schema.ValueType, value string) {
 }
 
 // Child configs
-func (cfg *ConfigBlock) CreateChild(key *ConfigKey) *ConfigBlock {
+func (cfg *ConfigBlock) CreateChild(key *ConfigKey, resource_type schema.ValueType) *ConfigBlock {
 	if cfg.children == nil {
 		logger.Log("TRACE", "{%s} Initializing child map", cfg.key)
 		cfg.children = make(map[*ConfigKey]*ConfigBlock)
@@ -89,8 +127,9 @@ func (cfg *ConfigBlock) CreateChild(key *ConfigKey) *ConfigBlock {
 	logger.Log("TRACE", "{%s} Creating child: %s", cfg.key, key)
 
 	new_child := &ConfigBlock{
-		parent: cfg,
-		key:    key,
+		parent:        cfg,
+		key:           key,
+		resource_type: resource_type,
 	}
 
 	cfg.children[key] = new_child
@@ -195,36 +234,7 @@ func (cfg *ConfigBlock) convertTreeToNative() map[string]interface{} {
 	if self_values, ok := cfg.GetValues(); ok {
 		for idx, value := range self_values {
 			logger.Log("TRACE", "idx: %d, value: %s", idx, value.value)
-			var val interface{}
-			switch value.value_type {
-			case schema.TypeBool:
-				if value.value == "true" {
-					val = true
-				} else if value.value == "false" {
-					val = false
-				} else {
-					logger.Log("ERROR", "idx: %d, value: %s, does not match bool 'true' or 'false'. Setting to 'false'.", idx, value.value)
-					val = false
-				}
-			case schema.TypeFloat:
-				if f, err := strconv.ParseFloat(value.value, 32); err == nil {
-					val = f
-				}
-				if f, err := strconv.ParseFloat(value.value, 64); err == nil {
-					val = f
-				}
-			case schema.TypeInt:
-				i, err := strconv.ParseInt(value.value, 10, 64)
-				if err == nil {
-					val = i
-				} else {
-					logger.Log("ERROR", "idx: %d, value: %s, unable to convert to int.", idx, value.value)
-				}
-			case schema.TypeString:
-				val = value.value
-			}
-
-			return_values = append(return_values, val)
+			return_values = append(return_values, value.getValueNative())
 		}
 	}
 
@@ -259,13 +269,96 @@ func (cfg *ConfigBlock) MarshalJSON() ([]byte, error) {
 	return j, nil
 }
 
+func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
+	logger.Log("TRACE", "{%s} Converting to a tree of golang native types in tf structure", cfg.key)
+
+	switch cfg.resource_type {
+	case schema.TypeBool, schema.TypeFloat, schema.TypeInt, schema.TypeString:
+		// Basic values
+		if len(cfg.values) == 0 {
+			logger.Log("ERROR", "{%s} of type schema.Type '%d', has '%d' values, expected 1.", cfg.key, cfg.resource_type, len(cfg.values))
+		} else {
+			if len(cfg.values) > 1 {
+				logger.Log("ERROR", "{%s} of type schema.Type '%d', has '%d' values, expected 1, only including first value.", cfg.key, cfg.resource_type, len(cfg.values))
+			} else {
+				return cfg.values[0].getValueNative()
+			}
+		}
+	case schema.TypeList:
+		response := []interface{}{}
+
+		// Check for values
+		if values, ok := cfg.GetValues(); ok {
+			for _, value := range values {
+				response = append(response, value.getValueNative())
+			}
+		}
+
+		// Recurse
+		if children, ok := cfg.GetChildren(); ok {
+			for key, child := range children {
+				result := child.convertTreeToTerraform()
+				response = append(response, map[string]interface{}{key.Key: result})
+			}
+		}
+
+		return response
+
+	case schema.TypeSet:
+		response := []*schema.Set{}
+
+		// Check for values
+		if values, ok := cfg.GetValues(); ok {
+			for _, value := range values {
+				response = append(response, value.getValueNative())
+			}
+		}
+
+		// Recurse
+		if children, ok := cfg.GetChildren(); ok {
+			for key, child := range children {
+				result := child.convertTreeToTerraform()
+				response = append(response, map[string]interface{}{key.Key: result})
+			}
+		}
+
+		return response
+
+	case schema.TypeMap:
+		if values, ok := cfg.GetValues(); ok {
+			logger.Log("ERROR", "{%s} of type schema.Type '%d', has '%d' values, expected zero. Values: %#v", cfg.key, cfg.resource_type, len(values), values)
+		}
+
+		// Recurse
+		response := map[string]interface{}{}
+		if children, ok := cfg.GetChildren(); ok {
+			for key, child := range children {
+				result := child.convertTreeToTerraform()
+				response[key.Key] = result
+			}
+		}
+		return response
+
+	}
+
+	logger.Log("ERROR", "{%s} Unable to return anything, this should never happen!", cfg.key)
+	panic("Unable to return anything, this should never happen!")
+}
+
 func (cfg *ConfigBlock) MarshalTerraform() map[string]interface{} {
 	// Return an object that can be used with schema.ResourceData.set() function
 
 	logger.Log("TRACE", "{%s} MarshalTerraform", cfg.key)
 
-	tf := cfg.convertTreeToNative()
-	return tf
+	response := make(map[string]interface{})
+
+	if children, ok := cfg.GetChildren(); ok {
+		for key, child := range children {
+			response[key.Key] = child.convertTreeToTerraform()
+		}
+	}
+
+	return response
 }
 
 func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {

@@ -2,7 +2,6 @@ package vyos
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -263,9 +262,9 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m int
 	diags = append(diags, diags_ret...)
 
 	// Create terraform config struct
-	terraform_key := key
-	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resource_schema, d)
-	diags = append(diags, diags_ret...)
+	// terraform_key := key
+	// terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resource_schema, d)
+	// diags = append(diags, diags_ret...)
 
 	// vyos_json_data, vyos_err := json.Marshal(vyos_config)
 	// tf_json_data, tf_err := json.Marshal(terraform_config)
@@ -279,21 +278,17 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, m int
 	// logger.Log("DEBUG", "vyos VyOS marshal data: %v\n", vyos_config.MarshalVyos())
 	// logger.Log("DEBUG", "tf VyOS marshal data: %v\n", terraform_config.MarshalVyos())
 
-	new_or_changed, deleted := terraform_config.GetDifference(vyos_config)
+	// new_or_changed, deleted := terraform_config.GetDifference(vyos_config)
 
-	new_or_changed_json, new_or_changed_err := json.Marshal(new_or_changed)
-	deleted_json, deleted_err := json.Marshal(deleted)
+	// new_or_changed_json, new_or_changed_err := json.Marshal(new_or_changed)
+	// deleted_json, deleted_err := json.Marshal(deleted)
 
-	logger.Log("DEBUG", "new_or_changed err: %s, json data: %s\n", new_or_changed_err, new_or_changed_json)
-	logger.Log("DEBUG", "deleted err: %s, json data: %s\n", deleted_err, deleted_json)
+	// logger.Log("DEBUG", "new_or_changed err: %s, json data: %s\n", new_or_changed_err, new_or_changed_json)
+	// logger.Log("DEBUG", "deleted err: %s, json data: %s\n", deleted_err, deleted_json)
 
-	if parameters, ok := terraform_config.GetChildren(); ok {
-		for parameter, value := range parameters {
-			key := parameter.Key
-			value := value.MarshalTerraform()[key]
-			logger.Log("DEBUG", "Setting parameter: %s, to value: %v", key, value)
-			d.Set(key, value)
-		}
+	for parameter, value := range vyos_config.MarshalTerraform() {
+		logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+		d.Set(parameter, value)
 	}
 
 	return diags
