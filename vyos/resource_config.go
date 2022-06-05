@@ -3,7 +3,6 @@ package vyos
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/foltik/vyos-client-go/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
