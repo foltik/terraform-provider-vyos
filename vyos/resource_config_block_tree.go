@@ -101,20 +101,10 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	client := *p.client
 	path := d.Get("path").(string)
 
-	// Check if config already exists
-	tree, err := client.Config.ShowTree(ctx, path)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	for attr, _ := range tree {
-		return diag.Errorf("Configuration block '%s' already exists and has '%s' set, try a resource import instead.", path, attr)
-	}
-
 	// Get commands needed to create resource in Vyos
 	commands := getCommandsForConfig(path, d.Get("configs"), true)
 
-	err = client.Config.SetTree(ctx, commands)
+	err := client.Config.SetTree(ctx, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
