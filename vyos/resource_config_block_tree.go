@@ -121,7 +121,7 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 	c := *p.client
 	path := d.Id()
 
-	configsTree, err := c.Config.ShowTree(ctx, path)
+	configsTree, err := c.Config.ShowAny(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
