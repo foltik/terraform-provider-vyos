@@ -51,4 +51,4 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 )
 
-// replace github.com/foltik/vyos-client-go => ../vyos-client-go
+replace github.com/foltik/vyos-client-go => ../vyos-client-go
