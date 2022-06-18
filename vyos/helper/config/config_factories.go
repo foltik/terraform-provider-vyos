@@ -22,7 +22,7 @@ func NewConfigFromVyos(ctx context.Context, vyos_key *ConfigKey, resource_schema
 	}
 
 	logger.Log("DEBUG", "Asking client to fetch vyos config: %#v", config_block.key)
-	vyos_native_config, err := vyos_client.Config.ShowTree(vyos_key.Key)
+	vyos_native_config, err := vyos_client.Config.ShowTree(ctx, vyos_key.Key)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}

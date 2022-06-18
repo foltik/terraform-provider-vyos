@@ -17,7 +17,7 @@ func helper_config_block_read(ctx context.Context, client *client.Client, key_te
 	key := helper_key_from_template(key_template, d.Id(), d)
 
 	log.Printf("[DEBUG] Reading tree at key '%s'", key)
-	live_config, err := client.Config.ShowTree(key)
+	live_config, err := client.Config.ShowTree(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
