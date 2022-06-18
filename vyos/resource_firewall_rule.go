@@ -337,7 +337,7 @@ func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, m i
 	// logger.Log("DEBUG", "new_or_changed err: %s, json data: %s\n", new_or_changed_err, new_or_changed_json)
 	// logger.Log("DEBUG", "deleted err: %s, json data: %s\n", deleted_err, deleted_json)
 
-	client.Config.SetTree(terraform_config.MarshalVyos())
+	client.Config.SetTree(ctx, terraform_config.MarshalVyos())
 
 	return diags
 }

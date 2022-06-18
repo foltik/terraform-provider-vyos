@@ -642,7 +642,7 @@ func helperSchemaBasedConfigRead(ctx context.Context, client *client.Client, key
 
 	log.Printf("[DEBUG] %s: Reading tree at key '%s'", func_name, key)
 
-	vyos_config, err := client.Config.ShowTree(key)
+	vyos_config, err := client.Config.ShowTree(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -693,7 +693,7 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 	for _, prereq_template := range prerequsite_key_templates {
 		prereq := helper_key_from_template(prereq_template, id, d)
 		log.Printf("[DEBUG] %s: Looking for pre-requisite key '%s'", func_name, prereq)
-		vyos_prereq_config, err := client.Config.ShowTree(prereq)
+		vyos_prereq_config, err := client.Config.ShowTree(ctx, prereq)
 		if vyos_prereq_config == nil {
 			return diag.Errorf("[ERROR] %s: Could not find pre-requisite key '%s'", func_name, prereq)
 		} else if err != nil {
@@ -703,7 +703,7 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 
 	// Check if config already exists
 	log.Printf("[DEBUG] %s: Reading tree at key '%s'", func_name, key)
-	vyos_config, err := client.Config.ShowTree(key)
+	vyos_config, err := client.Config.ShowTree(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	} else if vyos_config != nil {
@@ -725,7 +725,7 @@ func helperSchemaBasedConfigCreate(ctx context.Context, client *client.Client, k
 		key: converted_config,
 	}
 
-	err = client.Config.SetTree(config)
+	err = client.Config.SetTree(ctx, config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -809,12 +809,12 @@ func helperSchemaBasedConfigUpdate(ctx context.Context, client *client.Client, k
 		key: updates_vyos,
 	}
 
-	err = client.Config.SetTree(config)
+	err = client.Config.SetTree(ctx, config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = client.Config.Delete(deleted...)
+	err = client.Config.Delete(ctx, deleted...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -846,7 +846,7 @@ func helperSchemaBasedConfigDelete(ctx context.Context, client *client.Client, k
 	// 	deleted = append(deleted, del_vyos)
 	// }
 
-	errDel := client.Config.Delete(key)
+	errDel := client.Config.Delete(ctx, key)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}

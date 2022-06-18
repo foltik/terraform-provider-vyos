@@ -65,7 +65,7 @@ func helper_config_block_create(ctx context.Context, client *client.Client, key_
 	key := helper_key_from_template(key_template, id, d)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTree(key)
+	configs, err := client.Config.ShowTree(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -105,7 +105,7 @@ func helper_config_block_create(ctx context.Context, client *client.Client, key_
 		key: live_attrs,
 	}
 
-	err = client.Config.SetTree(live_config)
+	err = client.Config.SetTree(ctx, live_config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -151,7 +151,7 @@ func helper_config_block_update(ctx context.Context, client *client.Client, key_
 	live_set_config := map[string]interface{}{
 		key: live_set_attrs,
 	}
-	errSet := client.Config.SetTree(live_set_config)
+	errSet := client.Config.SetTree(ctx, live_set_config)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}
@@ -160,7 +160,7 @@ func helper_config_block_update(ctx context.Context, client *client.Client, key_
 	for _, live_delete_attr := range live_delete_attrs {
 		live_delete_keys = append(live_delete_keys, key+" "+live_delete_attr)
 	}
-	errDel := client.Config.Delete(live_delete_keys...)
+	errDel := client.Config.Delete(ctx, live_delete_keys...)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
@@ -179,7 +179,7 @@ func helper_config_block_delete(ctx context.Context, client *client.Client, key_
 		live_delete_keys = append(live_delete_keys, key+" "+live_config_field)
 	}
 
-	errDel := client.Config.Delete(live_delete_keys...)
+	errDel := client.Config.Delete(ctx, live_delete_keys...)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}

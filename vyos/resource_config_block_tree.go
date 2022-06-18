@@ -40,10 +40,10 @@ func resourceConfigBlockTree() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Required:         true,
+				Required: true,
 			},
 		},
-        Timeouts: &schema.ResourceTimeout{
+		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(10 * time.Minute),
 			Read:    schema.DefaultTimeout(10 * time.Minute),
 			Update:  schema.DefaultTimeout(10 * time.Minute),
@@ -65,8 +65,8 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	
-	for attr, _ := range configs {
+
+	for attr := range configs {
 		return diag.Errorf("Configuration block '%s' already exists and has '%s' set, try a resource import instead.", path, attr)
 	}
 
@@ -110,7 +110,6 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 		value := path_value[1]
 		configs[path] = value
 	}
-	
 
 	// Easiest way to allow ImportStatePassthroughContext to work is to set the path
 	if d.Get("path") == "" {
