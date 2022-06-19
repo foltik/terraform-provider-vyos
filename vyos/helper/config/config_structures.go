@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -67,7 +68,7 @@ func (value *ConfigValue) getValueNative() interface{} {
 			val = f
 		}
 	case schema.TypeInt:
-		i, err := strconv.ParseInt(value.value, 10, 64)
+		i, err := strconv.ParseInt(value.value, 10, 32)
 		if err == nil {
 			val = i
 		} else {
@@ -220,6 +221,15 @@ func (cfg *ConfigBlock) GetValuesRecursive() (values []ConfigValue, has_values b
 	}
 	if len(ret) > 0 {
 		return ret, true
+	}
+
+	return nil, false
+}
+
+func (cfg *ConfigBlock) PopChild(key string) (child *ConfigBlock, had_child bool) {
+	if found_child, ok := cfg.GetChild(key); ok {
+		delete(cfg.children, found_child.key)
+		return found_child, true
 	}
 
 	return nil, false
@@ -383,21 +393,8 @@ func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
 					logger.Log("ERROR", "idx: %d, value: %s, does not match bool 'true' or 'false'. Setting to 'false'.", idx, value.value)
 					continue
 				}
-			case schema.TypeFloat:
-				if f, err := strconv.ParseFloat(value.value, 32); err == nil {
-					val = f
-				}
-				if f, err := strconv.ParseFloat(value.value, 64); err == nil {
-					val = f
-				}
-			case schema.TypeInt:
-				i, err := strconv.ParseInt(value.value, 10, 64)
-				if err == nil {
-					val = i
-				} else {
-					logger.Log("ERROR", "idx: %d, value: %s, unable to convert to int.", idx, value.value)
-				}
-			case schema.TypeString:
+
+			default:
 				val = value.value
 			}
 
@@ -409,11 +406,14 @@ func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
 	if children, ok := cfg.GetChildren(); ok {
 		for key, child := range children {
 			logger.Log("TRACE", "child: %s", key)
-			child_values := child.convertTreeToVyos()
-			if child_values != nil {
-				return_values = append(return_values, child_values)
+
+			if child.resource_type == schema.TypeBool {
+				if child.values[0].value == "true" {
+					return_values = append(return_values, key.Key)
+				}
 			} else {
-				logger.Log("TRACE", "child: %s was nil, possible boolean set to false.", key)
+				child_values := child.convertTreeToVyos()
+				return_values = append(return_values, child_values)
 			}
 		}
 	}
@@ -421,7 +421,7 @@ func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
 	// Do not return a map if return valies = nil since that means we were a bool = false
 	if return_values != nil {
 		data := map[string]interface{}{
-			cfg.key.Key: return_values,
+			strings.Replace(cfg.key.Key, "_", "-", -1): return_values,
 		}
 		logger.Log("TRACE", "{%s} returning result '%#v'", cfg.key, data)
 		return data

@@ -7,8 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
-	"github.com/foltik/vyos-client-go/client"
 )
 
 const (
@@ -61,21 +59,25 @@ func resourceFirewallRuleSet() *schema.Resource {
 }
 
 func resourceFirewallRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helper_config_block_read(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+	p := m.(*ProviderClass)
+	client := *p.client
+	return helper_config_block_read(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
 func resourceFirewallRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helper_config_block_create(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+	p := m.(*ProviderClass)
+	client := *p.client
+	return helper_config_block_create(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
 func resourceFirewallRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helper_config_block_update(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+	p := m.(*ProviderClass)
+	client := *p.client
+	return helper_config_block_update(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }
 
 func resourceFirewallRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
-	return helper_config_block_delete(ctx, client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+	p := m.(*ProviderClass)
+	client := *p.client
+	return helper_config_block_delete(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
 }

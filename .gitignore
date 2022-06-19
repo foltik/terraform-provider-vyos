@@ -6,3 +6,5 @@ vendor/
 .terraform.lock.hcl
 terraform-provider-vyos
 __debug_bin
+
+.vscode/*.log

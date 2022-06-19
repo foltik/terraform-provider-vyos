@@ -31,7 +31,7 @@ func FormatResourceId(template ConfigKeyTemplate, d *schema.ResourceData) string
 
 	var id string
 
-	for _, attr := range getKeyFields(template) {
+	for _, attr := range GetKeyFields(template) {
 		// Build terraform resource ID from template fields one by one
 
 		logger.Log("TRACE", "adding attr: '%s'", attr)
@@ -54,7 +54,7 @@ func FormatKey(template ConfigKeyTemplate, id string, d *schema.ResourceData) st
 	logger.Log("TRACE", "template: '%s', id: '%s'", template, id)
 
 	key := template.Template
-	for _, parameter := range getKeyFields(template) {
+	for _, parameter := range GetKeyFields(template) {
 		// Loop over each templated parameter field
 
 		// Get parameter value for current templated field
@@ -73,7 +73,7 @@ func FormatKey(template ConfigKeyTemplate, id string, d *schema.ResourceData) st
 	return key
 }
 
-func getKeyFields(template ConfigKeyTemplate) []string {
+func GetKeyFields(template ConfigKeyTemplate) []string {
 	// Use key template to generate a list of resource ID parameters
 
 	logger.Log("TRACE", "template: '%s'", template)
