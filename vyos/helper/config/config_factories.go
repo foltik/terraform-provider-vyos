@@ -54,8 +54,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 
 			// If VyOS has this parameter set create config object and populate it
 			if vyos_config, ok := parent_vyos_config[vyos_key_string]; ok {
-				key := ConfigKey{key_string}
-				child_config := config_block.CreateChild(&key, parameter_schema.Type)
+				child_config := config_block.CreateChild(key_string, parameter_schema.Type)
 				child_diags := vyosWalker(ctx, child_config, parameter_schema, vyos_config)
 				diags = append(diags, child_diags...)
 			} else {
@@ -119,8 +118,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 
 						// If VyOS has this parameter set create config object and populate it
 						if vyos_config, ok := parent_vyos_config[vyos_key_string]; ok {
-							key := ConfigKey{key_string}
-							sub_config := config_block.CreateChild(&key, schema.Type)
+							sub_config := config_block.CreateChild(key_string, schema.Type)
 							sub_diags := vyosWalker(ctx, sub_config, schema, vyos_config)
 							diags = append(diags, sub_diags...)
 						} else {
@@ -163,7 +161,7 @@ func NewConfigFromTerraform(ctx context.Context, vyos_key *ConfigKey, resource_s
 
 	for parameter_key, parameter_schema := range resource_schema.Schema {
 		if terraform_native_config, ok := data.GetOk(parameter_key); ok {
-			parameter_config_block := config_block.CreateChild(&ConfigKey{Key: parameter_key}, parameter_schema.Type)
+			parameter_config_block := config_block.CreateChild(parameter_key, parameter_schema.Type)
 
 			diags_ret := terraformWalker(ctx, parameter_config_block, parameter_schema, terraform_native_config)
 			diags = append(diags, diags_ret...)
@@ -196,8 +194,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 				logger.Log("TRACE", "found key: '%s' in terraform_config: %#v", key_string, terraform_config)
 
 				if terraform_sub_config != "" && terraform_sub_config != nil {
-					key := ConfigKey{key_string}
-					sub_config := config_block.CreateChild(&key, parameter_schema.Type)
+					sub_config := config_block.CreateChild(key_string, parameter_schema.Type)
 					sub_diags := terraformWalker(ctx, sub_config, parameter_schema, terraform_sub_config)
 					diags = append(diags, sub_diags...)
 				} else {
@@ -279,16 +276,24 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 				} else {
 					// Treat list/set as config block
 					for key_string, parameter_schema := range resource_schema_elem_schema {
+
+						// Get the singular config block element
+						terraform_native_config_block := terraform_native_config.([]interface{})[0]
+
+						// Some blocks need to support being empty (eg acceleration qat, this might allow for continual diff if tf is poorly written)
+						if terraform_native_config_block == nil {
+							terraform_native_config_block = make(map[string]interface{})
+						}
+
 						// Convert to map as expected based on schema type
-						terraform_config := terraform_native_config.([]interface{})[0].(map[string]interface{})
+						terraform_config := terraform_native_config_block.(map[string]interface{})
 
 						// If terraform has this parameter set create config object and populate it
 						if terraform_sub_config, ok := terraform_config[key_string]; ok {
 							logger.Log("TRACE", "found key: '%s' in terraform_config: %#v", key_string, terraform_config)
 
 							if terraform_sub_config != "" && terraform_sub_config != nil {
-								key := ConfigKey{key_string}
-								sub_config := config_block.CreateChild(&key, parameter_schema.Type)
+								sub_config := config_block.CreateChild(key_string, parameter_schema.Type)
 								sub_diags := terraformWalker(ctx, sub_config, parameter_schema, terraform_sub_config)
 								diags = append(diags, sub_diags...)
 							} else {

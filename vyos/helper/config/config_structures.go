@@ -119,21 +119,28 @@ func (cfg *ConfigBlock) AddValue(value_type schema.ValueType, value string) {
 }
 
 // Child configs
-func (cfg *ConfigBlock) CreateChild(key *ConfigKey, resource_type schema.ValueType) *ConfigBlock {
+func (cfg *ConfigBlock) CreateChild(key string, resource_type schema.ValueType) *ConfigBlock {
 	if cfg.children == nil {
 		logger.Log("TRACE", "{%s} Initializing child map", cfg.key)
 		cfg.children = make(map[*ConfigKey]*ConfigBlock)
 	}
 
+	if child, ok := cfg.GetChild(key); ok {
+		logger.Log("TRACE", "{%s} Returning existing child: %s", cfg.key, key)
+		return child
+	}
+
 	logger.Log("TRACE", "{%s} Creating child: %s", cfg.key, key)
+
+	key_obj := ConfigKey{key}
 
 	new_child := &ConfigBlock{
 		parent:        cfg,
-		key:           key,
+		key:           &key_obj,
 		resource_type: resource_type,
 	}
 
-	cfg.children[key] = new_child
+	cfg.children[&key_obj] = new_child
 
 	return new_child
 }
@@ -281,6 +288,7 @@ func (cfg *ConfigBlock) MarshalJSON() ([]byte, error) {
 
 func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 	logger.Log("TRACE", "{%s} Converting to a tree of golang native types in tf structure", cfg.key)
+	logger.Log("TRACE", "{%s} of type schema.Type '%d'", cfg.key, cfg.resource_type)
 
 	switch cfg.resource_type {
 	case schema.TypeBool, schema.TypeFloat, schema.TypeInt, schema.TypeString:
@@ -291,7 +299,9 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 			if len(cfg.values) > 1 {
 				logger.Log("ERROR", "{%s} of type schema.Type '%d', has '%d' values, expected 1, only including first value.", cfg.key, cfg.resource_type, len(cfg.values))
 			} else {
-				return cfg.values[0].getValueNative()
+				value := cfg.values[0].getValueNative()
+				logger.Log("TRACE", "{%s} with value: '%v'", cfg.key, value)
+				return value
 			}
 		}
 	case schema.TypeList:
@@ -299,6 +309,7 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 
 		// Check for values
 		if values, ok := cfg.GetValues(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' values", cfg.key, cfg.resource_type, len(values))
 			for _, value := range values {
 				response = append(response, value.getValueNative())
 			}
@@ -306,10 +317,13 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 
 		// Recurse
 		if children, ok := cfg.GetChildren(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' children", cfg.key, cfg.resource_type, len(children))
+			block := make(map[string]interface{})
 			for key, child := range children {
 				result := child.convertTreeToTerraform()
-				response = append(response, map[string]interface{}{key.Key: result})
+				block[key.Key] = result
 			}
+			response = []interface{}{block}
 		}
 
 		return response
@@ -319,6 +333,7 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 
 		// Check for values
 		if values, ok := cfg.GetValues(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' values", cfg.key, cfg.resource_type, len(values))
 			for _, value := range values {
 				response = append(response, value.getValueNative())
 			}
@@ -326,22 +341,27 @@ func (cfg *ConfigBlock) convertTreeToTerraform() interface{} {
 
 		// Recurse
 		if children, ok := cfg.GetChildren(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' children", cfg.key, cfg.resource_type, len(children))
+			block := make(map[string]interface{})
 			for key, child := range children {
 				result := child.convertTreeToTerraform()
-				response = append(response, map[string]interface{}{key.Key: result})
+				block[key.Key] = result
 			}
+			response = []interface{}{block}
 		}
 
 		return response
 
 	case schema.TypeMap:
 		if values, ok := cfg.GetValues(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' values", cfg.key, cfg.resource_type, len(values))
 			logger.Log("ERROR", "{%s} of type schema.Type '%d', has '%d' values, expected zero. Values: %#v", cfg.key, cfg.resource_type, len(values), values)
 		}
 
 		// Recurse
 		response := map[string]interface{}{}
 		if children, ok := cfg.GetChildren(); ok {
+			logger.Log("TRACE", "{%s} of type schema.Type '%d', found '%d' children", cfg.key, cfg.resource_type, len(children))
 			for key, child := range children {
 				result := child.convertTreeToTerraform()
 				response[key.Key] = result
@@ -442,26 +462,23 @@ func (cfg *ConfigBlock) MarshalVyos() map[string]interface{} {
 
 func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *ConfigBlock, missing *ConfigBlock) {
 	// Return config that represents changed (+ new) and missing parameters of this config when compared to compare_config
+	// Best used as changed, deleted := cfg_from_terraform.GetDifference(cfg_from_vyos)
 
-	logger.Log("TRACE", "{%s} GetDifference", cfg.key)
+	logger.Log("TRACE", "{%s}", cfg.key)
 
 	// Keep track if we have added anything with these horrible extra booleans
-	changed_used := false
-	if changed == nil {
-		changed = &ConfigBlock{
-			key: cfg.key,
-		}
+	has_changed := false
+	changed = &ConfigBlock{
+		key: cfg.key,
 	}
 
-	missing_used := false
-	if missing == nil {
-		missing = &ConfigBlock{
-			key: cfg.key,
-		}
+	has_missing := false
+	missing = &ConfigBlock{
+		key: cfg.key,
 	}
 
 	// Find missing values
-	logger.Log("TRACE", "{%s} GetDifference, find missing values", cfg.key)
+	logger.Log("TRACE", "{%s} find missing values", cfg.key)
 	if compare_vals, ok := compare_config.GetValues(); ok {
 		for _, compare_val := range compare_vals {
 			found_val := false
@@ -469,22 +486,22 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 			for _, self_val := range cfg.values {
 
 				if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
-					logger.Log("TRACE", "Both has value {%s}", self_val.value)
+					logger.Log("TRACE", "{%s} Both has value {%s}", cfg.key, self_val.value)
 					found_val = true
 					break
 				}
 			}
 
 			if !found_val {
-				logger.Log("TRACE", "Missing val {%s}", compare_val.value)
+				logger.Log("TRACE", "{%s} Missing val {%s}", cfg.key, compare_val.value)
 				missing.AddValue(compare_val.value_type, compare_val.value)
-				missing_used = true
+				has_missing = true
 			}
 		}
 	}
 
 	// Find new values
-	logger.Log("TRACE", "{%s} GetDifference, find new values", cfg.key)
+	logger.Log("TRACE", "{%s} find new values", cfg.key)
 	if self_vals, ok := cfg.GetValues(); ok {
 		for _, self_val := range self_vals {
 			found_val := false
@@ -492,16 +509,16 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 			for _, compare_val := range compare_config.values {
 
 				if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
-					logger.Log("TRACE", "Both has value {%s}", self_val.value)
+					logger.Log("TRACE", "{%s} Both has value {%s}", cfg.key, self_val.value)
 					found_val = true
 					break
 				}
 			}
 
 			if !found_val {
-				logger.Log("TRACE", "New val {%s}", self_val.value)
+				logger.Log("TRACE", "{%s} New val {%s}", cfg.key, self_val.value)
 				changed.AddValue(self_val.value_type, self_val.value)
-				changed_used = true
+				has_changed = true
 			}
 		}
 	}
@@ -511,82 +528,93 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 	for k := range cfg.children {
 		self_keys = append(self_keys, k.Key)
 	}
-	logger.Log("DEBUG", "self children: %v", self_keys)
+	logger.Log("DEBUG", "{%s} self children: %v", cfg.key, self_keys)
 
 	compare_keys := make([]string, len(compare_config.children))
 	for k := range compare_config.children {
 		compare_keys = append(compare_keys, k.Key)
 	}
-	logger.Log("DEBUG", "compare children: %v", compare_keys)
+	logger.Log("DEBUG", "{%s} compare children: %v", cfg.key, compare_keys)
 
 	// Find missing children
-	logger.Log("TRACE", "{%s} GetDifference, find missing children", cfg.key)
+	logger.Log("TRACE", "{%s} find missing children", cfg.key)
 	if compare_children, ok := compare_config.GetChildren(); ok {
 		for compare_child_key, compare_child_val := range compare_children {
 
 			found_child := false
 
 			if self_child, ok := cfg.GetChild(compare_child_key.Key); ok {
-				logger.Log("TRACE", "Both has child {%s}", self_child.key)
+				logger.Log("TRACE", "{%s} Both has child {%s}", cfg.key, self_child.key)
 				found_child = true
 				continue
 			}
 
 			if !found_child {
-				logger.Log("TRACE", "Missing child {%s}", compare_child_key)
+				logger.Log("TRACE", "{%s} Missing child {%s}", cfg.key, compare_child_key)
 				missing.AddChild(compare_child_val)
-				missing_used = true
+				has_missing = true
 			}
 		}
 	}
 
 	// Find new children
-	logger.Log("TRACE", "{%s} GetDifference, find new children", cfg.key)
+	logger.Log("TRACE", "{%s} find new children", cfg.key)
 	if self_children, ok := cfg.GetChildren(); ok {
 		for self_child_key, self_child_val := range self_children {
 
 			found_child := false
 
 			if compare_child, ok := compare_config.GetChild(self_child_key.Key); ok {
-				logger.Log("TRACE", "Both has child {%s}", compare_child.key)
+				logger.Log("TRACE", "{%s} Both has child {%s}", cfg.key, compare_child.key)
 				found_child = true
 				continue
 			}
 
 			if !found_child {
-				logger.Log("TRACE", "New child {%s}", self_child_key)
+				logger.Log("TRACE", "{%s} New config child found {%s}", cfg.key, self_child_key)
 				changed.AddChild(self_child_val)
-				changed_used = true
+				has_changed = true
 			}
 		}
 	}
 
 	// Recurse into own children, compare children should either be in this list, or in the missing list
-	logger.Log("TRACE", "{%s} GetDifference, recurse operation into children", cfg.key)
+	logger.Log("TRACE", "{%s} recurse operation into children", cfg.key)
 	if self_children, ok := cfg.GetChildren(); ok {
 		for self_child_key, self_child_val := range self_children {
+			if _, is_missing := missing.GetChild(self_child_key.Key); is_missing {
+				logger.Log("TRACE", "{%s} Child already marked as missing '{%s}'", cfg.key, self_child_key.Key)
+				continue
+			}
+
 			if compare_child, ok := compare_config.GetChild(self_child_key.Key); ok {
 
 				child_changed, child_missing := self_child_val.GetDifference(compare_child)
 
 				if child_changed != nil {
 					changed.AddChild(child_changed)
-					changed_used = true
+					has_changed = true
 				}
 
 				if child_missing != nil {
 					missing.AddChild(child_missing)
-					missing_used = true
+					has_missing = true
 				}
 			}
 		}
 	}
 
-	if !changed_used {
+	if !has_changed {
+		logger.Log("TRACE", "{%s} No changes found", cfg.key)
 		changed = nil
 	}
-	if !missing_used {
+	if !has_missing {
+		logger.Log("TRACE", "{%s} No missing found", cfg.key)
 		missing = nil
 	}
+
+	logger.Log("TRACE", "{%s} Changed: %v", cfg.key, changed)
+	logger.Log("TRACE", "{%s} Missing: %v", cfg.key, missing)
+
 	return changed, missing
 }
