@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	ResourceFirewallRuleKeyTemplate    = "firewall name {{rule_set}} rule {{priority}}"
-	ResourceFirewallRulePrereqTemplate = "firewall name {{rule_set}}"
+	ResourceFirewallRuleKeyTemplate = "firewall name {{rule_set}} rule {{priority}}"
 )
 
 func resourceFirewallRule() *schema.Resource {
