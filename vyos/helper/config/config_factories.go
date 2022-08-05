@@ -22,7 +22,7 @@ func NewConfigFromVyos(ctx context.Context, vyos_key *ConfigKey, resource_schema
 	}
 
 	logger.Log("DEBUG", "Asking client to fetch vyos config: %#v", config_block.key)
-	vyos_native_config, err := vyos_client.Config.ShowTree(ctx, vyos_key.Key)
+	vyos_native_config, err := vyos_client.Config.Show(ctx, vyos_key.Key)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
@@ -38,7 +38,12 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 	// Recursive function to walk VyOS config and return a ConfigBlock
 	// Attempt to make any type of failure loud and immidiate to help discover edge cases.
 
-	logger.Log("TRACE", "parent_config.key:%#v", config_block.key)
+	logger.Log("TRACE", "{%s} Walking", config_block.key.Key)
+
+	if parent_vyos_native_config == nil {
+		logger.Log("TRACE", "{%s} parent_vyos_native_config is nil", config_block.key.Key)
+		return diags
+	}
 
 	// Loop over maps/lists/sets, handle values after the switch
 	switch resource_schema := resource_schema.(type) {
@@ -49,6 +54,7 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 
 		for key_string, parameter_schema := range resource_schema {
 			// Convert to map as expected based on schema type
+			logger.Log("TRACE", "key_string: '%s' parent_vyos_native_config: '%#v'", key_string, parent_vyos_native_config)
 			parent_vyos_config := parent_vyos_native_config.(map[string]interface{})
 			vyos_key_string := strings.Replace(key_string, "_", "-", -1)
 
@@ -278,7 +284,11 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 					for key_string, parameter_schema := range resource_schema_elem_schema {
 
 						// Get the singular config block element
-						terraform_native_config_block := terraform_native_config.([]interface{})[0]
+						var terraform_native_config_block any
+
+						if len(terraform_native_config.([]interface{})) > 0 {
+							terraform_native_config_block = terraform_native_config.([]interface{})[0]
+						}
 
 						// Some blocks need to support being empty (eg acceleration qat, this might allow for continual diff if tf is poorly written)
 						if terraform_native_config_block == nil {

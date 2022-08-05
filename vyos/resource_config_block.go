@@ -43,7 +43,7 @@ func resourceConfigBlock() *schema.Resource {
 				ValidateDiagFunc: validation.MapKeyMatch(regexp.MustCompile("^[^ ]+$"), "Config keys can not contain whitespace"),
 			},
 		},
-        Timeouts: &schema.ResourceTimeout{
+		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(10 * time.Minute),
 			Read:    schema.DefaultTimeout(10 * time.Minute),
 			Update:  schema.DefaultTimeout(10 * time.Minute),
@@ -61,12 +61,12 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTree(ctx, path)
+	configs, err := client.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	// Dont care about sub config blocks
-	for attr, val := range configs {
+	for attr, val := range configs.(map[string]interface{}) {
 		switch val.(type) {
 		default:
 			continue
@@ -80,11 +80,11 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	configs = d.Get("configs").(map[string]interface{})
 
 	commands := map[string]interface{}{}
-	for attr, val := range configs {
-		commands[path+" "+attr] = val
+	for attr, val := range configs.(map[string]interface{}) {
+		commands[attr] = val
 	}
 
-	err = client.Config.SetTree(ctx, commands)
+	err = client.Config.Set(ctx, path, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -101,16 +101,16 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 	c := *p.client
 	path := d.Id()
 
-	configs, err := c.Config.ShowTree(ctx, path)
+	configs, err := c.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Remove child blocks of config
-	for attr, val := range configs {
+	for attr, val := range configs.(map[string]interface{}) {
 		switch val.(type) {
 		default:
-			delete(configs, attr)
+			delete(configs.(map[string]interface{}), attr)
 		case string:
 			continue
 		case int:
@@ -149,21 +149,21 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		value, ok := new_configs[old_attr]
 		_ = value
 		if !ok {
-			deleted_attrs = append(deleted_attrs, path+" "+old_attr)
+			deleted_attrs = append(deleted_attrs, old_attr)
 		}
 	}
 
-	errDel := c.Config.Delete(ctx, deleted_attrs...)
+	errDel := c.Config.Delete(ctx, path, deleted_attrs)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
 
 	commands := map[string]interface{}{}
 	for attr, val := range new_configs {
-		commands[path+" "+attr] = val
+		commands[attr] = val
 	}
 
-	errSet := c.Config.SetTree(ctx, commands)
+	errSet := c.Config.Set(ctx, path, commands)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}

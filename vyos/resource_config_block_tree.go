@@ -61,23 +61,23 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTree(ctx, path)
+	configs, err := client.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	for attr := range configs {
+	for attr := range configs.(map[string]interface{}) {
 		return diag.Errorf("Configuration block '%s' already exists and has '%s' set, try a resource import instead.", path, attr)
 	}
 
 	configs = d.Get("configs").(map[string]interface{})
 
 	commands := map[string]interface{}{}
-	for attr, val := range configs {
-		commands[path+" "+attr] = val
+	for attr, val := range configs.(map[string]interface{}) {
+		commands[attr] = val
 	}
 
-	err = client.Config.SetTree(ctx, commands)
+	err = client.Config.Set(ctx, path, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -94,7 +94,7 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 	c := *p.client
 	path := d.Id()
 
-	configsTree, err := c.Config.ShowTree(ctx, path)
+	configsTree, err := c.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -142,21 +142,21 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		value, ok := new_configs[old_attr]
 		_ = value
 		if !ok {
-			deleted_attrs = append(deleted_attrs, path+" "+old_attr)
+			deleted_attrs = append(deleted_attrs, old_attr)
 		}
 	}
 
-	errDel := c.Config.Delete(ctx, deleted_attrs...)
+	errDel := c.Config.Delete(ctx, path, deleted_attrs)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
 
 	commands := map[string]interface{}{}
 	for attr, val := range new_configs {
-		commands[path+" "+attr] = val
+		commands[attr] = val
 	}
 
-	errSet := c.Config.SetTree(ctx, commands)
+	errSet := c.Config.Set(ctx, path, commands)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}

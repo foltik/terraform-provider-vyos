@@ -53,7 +53,8 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, resource_key_te
 		logger.Log("INFO", "Removed key field from config object: %v", field)
 	}
 
-	err := client.Config.SetTree(ctx, terraform_config.MarshalVyos())
+	path, value := terraform_config.MarshalVyos()
+	err := client.Config.Set(ctx, path, value)
 
 	if err != nil {
 		logger.Log("ERROR", "API Client error: %v", err)
@@ -93,25 +94,25 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, resource_key_te
 		logger.Log("INFO", "Removed key field from config object: %v", field)
 	}
 
-	// Find changes
+	// Find config changes
 	changed, deleted := terraform_config.GetDifference(vyos_config)
 
-	// Apply changed parameters
-	if changed != nil {
-		changed_vyos := changed.MarshalVyos()
-		logger.Log("INFO", "Changes detected: %#v", changed_vyos)
-		err := client.Config.SetTree(ctx, changed_vyos)
+	// Remove deleted parameters
+	if deleted != nil {
+		deleted_path, deleted_config := deleted.MarshalVyos()
+		logger.Log("INFO", "Deleted detected: %#v", deleted_config)
+		err := client.Config.Delete(ctx, deleted_path, deleted_config)
 		if err != nil {
 			logger.Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
 		}
 	}
 
-	// Remove deleted parameters
-	if deleted != nil {
-		deleted_vyos := deleted.MarshalVyos()
-		logger.Log("INFO", "Deleted detected: %#v", deleted_vyos)
-		err := client.Config.DeleteTree(ctx, deleted_vyos)
+	// Apply changed parameters
+	if changed != nil {
+		changed_path, changed_config := changed.MarshalVyos()
+		logger.Log("INFO", "Changes detected: %#v", changed_config)
+		err := client.Config.Set(ctx, changed_path, changed_config)
 		if err != nil {
 			logger.Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
@@ -140,7 +141,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, resource_key_te
 	diags = append(diags, diags_ret...)
 
 	// Remove resource
-	delete_config := vyos_config.MarshalVyos()
+	_, delete_config := vyos_config.MarshalVyos()
 	logger.Log("INFO", "Deleting key: '%s' vyos resource: %#v", key_string, delete_config)
 	err := client.Config.Delete(ctx, key_string)
 	if err != nil {

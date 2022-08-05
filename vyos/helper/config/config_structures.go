@@ -451,13 +451,19 @@ func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
 	}
 }
 
-func (cfg *ConfigBlock) MarshalVyos() map[string]interface{} {
+func (cfg *ConfigBlock) MarshalVyos() (key string, config any) {
 	// Return object that can be used with vyos client to create / set configs
 
 	logger.Log("TRACE", "{%s} MarshalVyos", cfg.key)
 
 	vy := cfg.convertTreeToVyos()
-	return vy
+
+	// should only ever contain a single key = config
+	for key, config := range vy {
+		return key, config
+	}
+
+	return "", nil
 }
 
 func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *ConfigBlock, missing *ConfigBlock) {

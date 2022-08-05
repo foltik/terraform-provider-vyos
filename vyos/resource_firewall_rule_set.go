@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -58,26 +59,60 @@ func resourceFirewallRuleSet() *schema.Resource {
 	}
 }
 
-func resourceFirewallRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+
+	// Client
 	p := m.(*ProviderClass)
 	client := *p.client
-	return helper_config_block_read(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+
+	// Key template
+	resource_key_template := ResourceFirewallRuleSetKeyTemplate
+
+	// Schema
+	resource_schema := resourceFirewallRuleSet()
+
+	return resource.ResourceRead(ctx, d, resource_key_template, resource_schema, &client)
+
 }
 
-func resourceFirewallRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	// Client
 	p := m.(*ProviderClass)
 	client := *p.client
-	return helper_config_block_create(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+
+	// Key template
+	resource_key_template := ResourceFirewallRuleSetKeyTemplate
+
+	// Schema
+	resource_schema := resourceFirewallRuleSet()
+
+	return resource.ResourceCreate(ctx, d, resource_key_template, resource_schema, &client)
 }
 
-func resourceFirewallRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	// Client
 	p := m.(*ProviderClass)
 	client := *p.client
-	return helper_config_block_update(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+
+	// Key template
+	resource_key_template := ResourceFirewallRuleSetKeyTemplate
+
+	// Schema
+	resource_schema := resourceFirewallRuleSet()
+
+	return resource.ResourceUpdate(ctx, d, resource_key_template, resource_schema, &client)
 }
 
-func resourceFirewallRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceFirewallRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+	// Client
 	p := m.(*ProviderClass)
 	client := *p.client
-	return helper_config_block_delete(ctx, &client, ResourceFirewallRuleSetKeyTemplate, d, resourceFirewallRuleSet().Schema)
+
+	// Key template
+	resource_key_template := ResourceFirewallRuleSetKeyTemplate
+
+	// Schema
+	resource_schema := resourceFirewallRuleSet()
+
+	return resource.ResourceDelete(ctx, d, resource_key_template, resource_schema, &client)
 }
