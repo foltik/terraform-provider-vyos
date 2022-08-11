@@ -25,27 +25,27 @@ resource "vyos_config" "hostname" {
 
 ### Required
 
-- **key** (String) Config path separated by spaces.
-- **value** (String) Config value.
+- `key` (String) Config path separated by spaces.
+- `value` (String) Config value.
 
 ### Optional
 
-- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
-- **id** (String) The resource ID, same as the `key`
+- `id` (String) The resource ID, same as the `key`
 
 <a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
 
-- **create** (String)
-- **default** (String)
-- **delete** (String)
-- **read** (String)
-- **update** (String)
+- `create` (String)
+- `default` (String)
+- `delete` (String)
+- `read` (String)
+- `update` (String)
 
 ## Import
 

@@ -33,11 +33,11 @@ provider "vyos" {
 
 ### Required
 
-- **key** (String, Sensitive)
-- **url** (String)
+- `key` (String, Sensitive)
+- `url` (String)
 
 ### Optional
 
-- **cert** (String)
-- **save** (Boolean) Save after making changes in Vyos
-- **save_file** (String) File to save configuration. Uses config.boot by default.
+- `cert` (String)
+- `save` (Boolean) Save after making changes in Vyos
+- `save_file` (String) File to save configuration. Uses config.boot by default.

@@ -17,16 +17,16 @@ A rule-set is a named collection of firewall rules that can be applied to an int
 
 ### Required
 
-- **name** (String) Name for this rule-set, _must be unique_.
+- `name` (String) Name for this rule-set, _must be unique_.
 
 ### Optional
 
-- **default_action** (String) Default action of the rule-set if no rule matched a packet criteria.
-- **description** (String) Rule-set description text.
-- **enable_default_log** (Boolean) Enable the logging of the default action.
+- `default_action` (String) Default action of the rule-set if no rule matched a packet criteria.
+- `description` (String) Rule-set description text.
+- `enable_default_log` (Boolean) Enable the logging of the default action.
 
 ### Read-Only
 
-- **id** (String) The resource ID, same as the `name`
+- `id` (String) The resource ID, same as the `name`
 
 

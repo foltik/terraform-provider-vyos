@@ -257,7 +257,7 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 
 		case schema.TypeMap:
 			logger.Log("ERROR", "(key: %s) TODO resource_schema.Type: %s", config_block.key.Key, resource_schema, resource_schema.Type)
-			diags = append(diags, diag.Errorf("(key: %s) TODO resource_schema.Type: %s", config_block.key.Key, resource_schema, resource_schema.Type)...)
+			diags = append(diags, diag.Errorf("(key: %s) TODO resource_schema.Type: %s", config_block.key.Key, resource_schema.Type)...)
 
 		case schema.TypeList, schema.TypeSet:
 

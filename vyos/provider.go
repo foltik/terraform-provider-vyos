@@ -44,9 +44,10 @@ func Provider() *schema.Provider {
 			"vyos_config":       resourceConfig(),
 			"vyos_config_block": resourceConfigBlock(),
 			//"vyos_firewall_group_address": resourceFirewallGroupAddress(),
-			"vyos_firewall_rule_set":   resourceFirewallRuleSet(),
-			"vyos_firewall_rule":       resourceFirewallRule(),
+			"vyos_firewall_rule_set":   resourceFirewallRuleSet().ResourceSchema,
+			"vyos_firewall_rule":       resourceFirewallRule().ResourceSchema,
 			"vyos_static_host_mapping": resourceStaticHostMapping(),
+			"vyos_dhcp_server":         resourceInfoDhcpServer().ResourceSchema,
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"vyos_config": dataSourceConfig(),
