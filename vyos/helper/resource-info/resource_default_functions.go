@@ -10,6 +10,29 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+	logger.Log("INFO", "Reading resource, global type")
+
+	// Key and ID
+	key_string := resourceInfo.KeyTemplate
+	key := config.ConfigKey{Key: key_string}
+	resouce_id := resourceInfo.StaticId
+
+	// Generate config object from VyOS
+	vyos_key := key
+	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	diags = append(diags, diags_ret...)
+
+	for parameter, value := range vyos_config.MarshalTerraform() {
+		logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+		d.Set(parameter, value)
+	}
+
+	d.SetId(resouce_id)
+
+	return diags
+}
+
 func ResourceRead(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Reading resource")
 
@@ -76,7 +99,7 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = ResourceRead(ctx, d, client, resourceInfo)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
 	diags = append(diags, diags_ret...)
 
 	return diags
@@ -134,7 +157,7 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = ResourceRead(ctx, d, client, resourceInfo)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
 	diags = append(diags, diags_ret...)
 
 	return diags
@@ -188,7 +211,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = ResourceRead(ctx, d, client, resourceInfo)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
 	diags = append(diags, diags_ret...)
 
 	return diags

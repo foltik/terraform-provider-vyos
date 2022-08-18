@@ -10,10 +10,10 @@ import (
 
 func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
 	return &resourceInfo.ResourceInfo{
-		KeyTemplate:             "set service dhcp-server shared-network-name {{shared_network_name}}",
+		KeyTemplate:             "service dhcp-server shared-network-name {{shared_network_name}}",
 		CreateRequiredTemplates: []string{},
 		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
-		DeleteBlockerTemplates:  []string{"set service dhcp-server shared-network-name {{shared_network_name}} subnet"},
+		DeleteBlockerTemplates:  []string{"service dhcp-server shared-network-name {{shared_network_name}} subnet"},
 		ResourceSchema: &schema.Resource{
 			Description:   "IPv4 DHCP Server. VyOS uses ISC DHCP server for both IPv4. The network topology is declared by shared-network-name and the subnet declarations. The DHCP service can serve multiple shared networks, with each shared network having 1 or more subnets. Each subnet must be present on an interface. A range can be declared inside a subnet to define a pool of dynamic addresses. Multiple ranges can be defined and can contain holes. Static mappings can be set to assign “static” addresses to clients based on their MAC address.",
 			ReadContext:   resourceDhcpServerRead,

@@ -21,6 +21,7 @@ type ResourceInfo struct {
 	CreateRequiredTemplates []string
 	DeleteStrategy          DELETETYPE
 	DeleteBlockerTemplates  []string
+	StaticId                string
 	ResourceSchema          *schema.Resource
 }
 
