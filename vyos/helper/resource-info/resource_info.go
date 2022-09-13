@@ -26,7 +26,7 @@ type ResourceInfo struct {
 }
 
 func ValidateStringKeyField() schema.SchemaValidateFunc {
-	return validation.StringDoesNotContainAny("_")
+	return validation.StringDoesNotContainAny("_ ")
 }
 
 func ValidateDiagStringKeyField() schema.SchemaValidateDiagFunc {

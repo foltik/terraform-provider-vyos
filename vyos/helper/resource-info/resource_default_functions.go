@@ -19,17 +19,21 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, client *cli
 	resouce_id := resourceInfo.StaticId
 
 	// Generate config object from VyOS
-	vyos_key := key
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diags_ret...)
 
-	for parameter, value := range vyos_config.MarshalTerraform() {
-		logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
-		d.Set(parameter, value)
+	if vyos_config == nil {
+		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
+		d.SetId("")
+		return diags
+	} else {
+		for parameter, value := range vyos_config.MarshalTerraform() {
+			logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+			d.Set(parameter, value)
+		}
 	}
 
 	d.SetId(resouce_id)
-
 	return diags
 }
 
@@ -43,17 +47,22 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, client *client.Cl
 	key := config.ConfigKey{Key: key_string}
 
 	// Generate config object from VyOS
-	vyos_key := key
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diags_ret...)
 
-	for parameter, value := range vyos_config.MarshalTerraform() {
-		logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
-		d.Set(parameter, value)
+	// If resource does not exist in VyOS
+	if vyos_config == nil {
+		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
+		d.SetId("")
+		return diags
+	} else {
+		for parameter, value := range vyos_config.MarshalTerraform() {
+			logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+			d.Set(parameter, value)
+		}
 	}
 
 	d.SetId(resouce_id)
-
 	return diags
 }
 
@@ -66,17 +75,31 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.
 	key_string := config.FormatKey(key_template, resouce_id, d)
 	key := config.ConfigKey{Key: key_string}
 
+	// Check if resource exists
+	vyos_config_self, diags_ret_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	if diags_ret_self != nil {
+		return diags_ret_self
+	}
+
+	if vyos_config_self != nil {
+		// TODO context aware? wait for timeout?...
+		return diag.Errorf("Configuration under key '%s' already exists with values: '%v'.", key.Key, vyos_config_self)
+	}
+
 	// Check for required resources before create
 	for _, reqKeyTemplateStr := range resourceInfo.CreateRequiredTemplates {
 		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
 		resouce_id := config.FormatResourceId(reqKeyTemplate, d)
-		reqKey := config.FormatKey(reqKeyTemplate, resouce_id, d)
-		val, err := client.Config.Show(ctx, reqKey)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		if val != nil {
-			return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, val)
+		reqKey := config.ConfigKey{Key: config.FormatKey(reqKeyTemplate, resouce_id, d)}
+
+		vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
+
+		//diags_ret, err := client.Config.Show(ctx, reqKey)
+		if diags_ret != nil {
+			return diags_ret
+		} else if vyos_config == nil {
+			// TODO context aware? wait for timeout?...
+			return diag.Errorf("Required parent configuration '%s' missing.", reqKey.Key)
 		}
 	}
 
@@ -123,6 +146,17 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, client *client.
 	vyos_key := key
 	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diags_ret...)
+
+	if vyos_config == nil {
+		diags = append(
+			diags,
+			diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Resource not found on remote server: " + vyos_key.Key,
+			},
+		)
+		return diags
+	}
 
 	// Remove fields/parameters only internal to terraform so they are not part of the comparison
 	terraform_config.PopChild("id")
@@ -182,6 +216,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, client *client.
 			return diag.FromErr(err)
 		}
 		if val != nil {
+			// TODO context aware? wait for timeout?...
 			return diag.Errorf("Configuration '%s' has blocker '%s' delete before continuing.", key, blockKey)
 		}
 	}
@@ -190,6 +225,17 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, client *client.
 	vyos_key := key
 	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diags_ret...)
+
+	if vyos_config == nil {
+		diags = append(
+			diags,
+			diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Resource not found on remote server: " + vyos_key.Key,
+			},
+		)
+		return diags
+	}
 
 	// Remove resource
 	_, delete_config := vyos_config.MarshalVyos()

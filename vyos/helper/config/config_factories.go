@@ -14,6 +14,12 @@ import (
 )
 
 func NewConfigFromVyos(ctx context.Context, vyos_key *ConfigKey, resource_schema *schema.Resource, vyos_client *client.Client) (*ConfigBlock, diag.Diagnostics) {
+	/*
+		Return ConfigBlock if config is found.
+		Return Diagnistics if issue is detected.
+		Return nil for both if no config is found in VyOS
+	*/
+
 	logger.Log("DEBUG", "vyos_key: %#v", vyos_key)
 	var diags diag.Diagnostics
 
@@ -23,7 +29,9 @@ func NewConfigFromVyos(ctx context.Context, vyos_key *ConfigKey, resource_schema
 
 	logger.Log("DEBUG", "Asking client to fetch vyos config: %#v", config_block.key)
 	vyos_native_config, err := vyos_client.Config.Show(ctx, vyos_key.Key)
-	if err != nil {
+	if vyos_native_config == nil && err == nil {
+		return nil, nil
+	} else if err != nil {
 		return nil, diag.FromErr(err)
 	}
 

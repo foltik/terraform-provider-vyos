@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/vyos-client-go/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -14,7 +15,7 @@ func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
 	return &resourceInfo.ResourceInfo{
 		KeyTemplate:             "firewall name {{name}}",
 		CreateRequiredTemplates: nil,
-		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
+		DeleteStrategy:          resourceInfo.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{"firewall name {{name}} rule"},
 		ResourceSchema: &schema.Resource{
 			Description:   "A rule-set is a named collection of firewall rules that can be applied to an interface or a zone, for more information see [VyOS Firewall doc](https://docs.vyos.io/en/latest/configuration/firewall/index.html#overview).",
@@ -38,7 +39,7 @@ func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
 					ValidateDiagFunc: validation.ToDiagFunc(
 						validation.All(
 							resourceInfo.ValidateStringKeyField(),
-							validation.StringMatch(regexp.MustCompile("^[-A-Za-z]+$"), "Rule-set name can only contain letters."),
+							validation.StringMatch(regexp.MustCompile("^[-A-Za-z]+$"), "Rule-set name can only contain letters and hyphens."),
 						),
 					),
 					ForceNew: true,
@@ -67,33 +68,57 @@ func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
 }
 
 func resourceFirewallRuleSetRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := p.client
+	// Client, also called from within the resourceInfo helper functions where only the client is available.
+	var vyos_client *client.Client
+	switch m.(type) {
+	case *ProviderClass:
+		p := m.(*ProviderClass)
+		vyos_client = p.client
+	case *client.Client:
+		vyos_client = m.(*client.Client)
+	}
 
-	return resourceInfo.ResourceRead(ctx, d, client, resourceFirewallRuleSet())
+	return resourceInfo.ResourceRead(ctx, d, vyos_client, resourceFirewallRuleSet())
 }
 
 func resourceFirewallRuleSetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := p.client
+	// Client, also called from within the resourceInfo helper functions where only the client is available.
+	var vyos_client *client.Client
+	switch m.(type) {
+	case *ProviderClass:
+		p := m.(*ProviderClass)
+		vyos_client = p.client
+	case *client.Client:
+		vyos_client = m.(*client.Client)
+	}
 
-	return resourceInfo.ResourceCreate(ctx, d, client, resourceFirewallRuleSet())
+	return resourceInfo.ResourceCreate(ctx, d, vyos_client, resourceFirewallRuleSet())
 }
 
 func resourceFirewallRuleSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := p.client
+	// Client, also called from within the resourceInfo helper functions where only the client is available.
+	var vyos_client *client.Client
+	switch m.(type) {
+	case *ProviderClass:
+		p := m.(*ProviderClass)
+		vyos_client = p.client
+	case *client.Client:
+		vyos_client = m.(*client.Client)
+	}
 
-	return resourceInfo.ResourceUpdate(ctx, d, client, resourceFirewallRuleSet())
+	return resourceInfo.ResourceUpdate(ctx, d, vyos_client, resourceFirewallRuleSet())
 }
 
 func resourceFirewallRuleSetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := p.client
+	// Client, also called from within the resourceInfo helper functions where only the client is available.
+	var vyos_client *client.Client
+	switch m.(type) {
+	case *ProviderClass:
+		p := m.(*ProviderClass)
+		vyos_client = p.client
+	case *client.Client:
+		vyos_client = m.(*client.Client)
+	}
 
-	return resourceInfo.ResourceDelete(ctx, d, client, resourceFirewallRuleSet())
+	return resourceInfo.ResourceDelete(ctx, d, vyos_client, resourceFirewallRuleSet())
 }

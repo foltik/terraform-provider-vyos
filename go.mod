@@ -3,7 +3,7 @@ module github.com/foltik/terraform-provider-vyos
 go 1.18
 
 require (
-	github.com/foltik/vyos-client-go v0.4.0
+	github.com/foltik/vyos-client-go v0.4.1
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.16.0
 )

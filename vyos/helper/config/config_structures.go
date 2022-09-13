@@ -198,7 +198,6 @@ func (cfg *ConfigBlock) GetChildren() (children map[*ConfigKey]*ConfigBlock, has
 	return nil, false
 }
 
-// Values
 func (cfg *ConfigBlock) GetValues() (values []ConfigValue, has_values bool) {
 	logger.Log("TRACE", "{%s} Fetching all values", cfg.key)
 
@@ -211,7 +210,6 @@ func (cfg *ConfigBlock) GetValues() (values []ConfigValue, has_values bool) {
 	return nil, false
 }
 
-// Values
 func (cfg *ConfigBlock) GetValuesRecursive() (values []ConfigValue, has_values bool) {
 	logger.Log("TRACE", "{%s} Fetching all (sub)values", cfg.key)
 
@@ -429,7 +427,7 @@ func (cfg *ConfigBlock) convertTreeToVyos() map[string]interface{} {
 
 			if child.resource_type == schema.TypeBool {
 				if child.values[0].value == "true" {
-					return_values = append(return_values, key.Key)
+					return_values = append(return_values, strings.Replace(key.Key, "_", "-", -1))
 				}
 			} else {
 				child_values := child.convertTreeToVyos()
