@@ -15,7 +15,6 @@ type ConfigKeyTemplate struct {
 
 // Used to clearify child index in ConfigBlock
 // Should never contain spaces
-// TODO can we verify "no spaces" in some way? maybe a private property with a setter or something?
 type ConfigKey struct {
 	Key string
 }

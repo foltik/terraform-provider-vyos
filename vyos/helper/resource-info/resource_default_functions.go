@@ -2,13 +2,22 @@ package resourceInfo
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/config"
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
 	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
+
+// Sleep time between retries
+const API_BACKOFF_TIME_IN_SECONDS = 2
+
+// Retries will have this many seconds less than configured timeout for reources
+const API_TIMEOUT_BUFFER_IN_SECONDS = 5
 
 func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Reading resource, global type")
@@ -22,8 +31,8 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface
 	//resource_id := resourceInfo.StaticId
 
 	// Generate config object from VyOS
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diags_ret...)
+	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
 		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
@@ -52,8 +61,8 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 	key := config.ConfigKey{Key: key_string}
 
 	// Generate config object from VyOS
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diags_ret...)
+	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	// If resource does not exist in VyOS
 	if vyos_config == nil {
@@ -76,6 +85,10 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 }
 
 func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+	/*
+		Supports timeout
+	*/
+
 	logger.Log("INFO", "Creating resource")
 
 	// Client
@@ -88,13 +101,12 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	key := config.ConfigKey{Key: key_string}
 
 	// Check if resource exists
-	vyos_config_self, diags_ret_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	if diags_ret_self != nil {
-		return diags_ret_self
+	vyos_config_self, err_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	if err_self != nil {
+		return diag.FromErr(err_self)
 	}
 
 	if vyos_config_self != nil {
-		// TODO context aware? wait for timeout?...
 		return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
 	}
 
@@ -103,21 +115,32 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
 		reqKey := config.ConfigKey{Key: config.FormatKeyFromResource(reqKeyTemplate, d)}
 
-		vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
+		// Retry until timeout
+		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
 
-		//diags_ret, err := client.Config.Show(ctx, reqKey)
-		if diags_ret != nil {
-			return diags_ret
-		} else if vyos_config == nil {
-			// TODO context aware? wait for timeout?...
-			return diag.Errorf("Required parent configuration '%s' missing.", reqKey.Key)
+			// Get required config
+			vyos_config, sub_err := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
+
+			if sub_err != nil {
+				return resource.NonRetryableError(sub_err)
+			} else if vyos_config == nil {
+				time.Sleep(API_BACKOFF_TIME_IN_SECONDS * time.Second)
+				return resource.RetryableError(fmt.Errorf("Required parent configuration '%s' missing.", reqKey.Key))
+			} else {
+				return nil
+			}
+		})
+
+		if err != nil {
+			diags = append(diags, diag.FromErr(err)...)
+			return diags
 		}
 	}
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
-	diags = append(diags, diags_ret...)
+	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	for _, field := range config.GetKeyFieldsFromTemplate(key_template) {
 		terraform_config.PopChild(field)
@@ -133,7 +156,7 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
+	diags_ret := resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
 
 	d.SetId(resource_id)
@@ -154,13 +177,13 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
-	diags = append(diags, diags_ret...)
+	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	// Generate config object from VyOS
 	vyos_key := key
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diags_ret...)
+	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
 		diags = append(
@@ -206,13 +229,17 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
+	diags_ret := resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
 
 	return diags
 }
 
 func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+	/*
+		Supports timeout
+	*/
+
 	logger.Log("INFO", "Deleting resource")
 
 	// Client
@@ -227,20 +254,29 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	for _, blockKeyTemplateStr := range resourceInfo.DeleteBlockerTemplates {
 		blockKeyTemplate := config.ConfigKeyTemplate{Template: blockKeyTemplateStr}
 		blockKey := config.FormatKeyFromResource(blockKeyTemplate, d)
-		val, err := client.Config.Show(ctx, blockKey)
+
+		// Retry until timeout
+		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
+			val, err := client.Config.Show(ctx, blockKey)
+			if err != nil {
+				return resource.NonRetryableError(err)
+			}
+			if val != nil {
+				return resource.RetryableError(fmt.Errorf("Configuration '%s' has blocker '%s' delete before continuing.", key, blockKey))
+			}
+			return nil
+		})
+
 		if err != nil {
-			return diag.FromErr(err)
-		}
-		if val != nil {
-			// TODO context aware? wait for timeout?...
-			return diag.Errorf("Configuration '%s' has blocker '%s' delete before continuing.", key, blockKey)
+			diags = append(diags, diag.FromErr(err)...)
+			return diags
 		}
 	}
 
 	// Generate config object from VyOS (only used for logs)
 	vyos_key := key
-	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diags_ret...)
+	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
 		diags = append(
@@ -273,7 +309,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
+	diags_ret := resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
 
 	return diags

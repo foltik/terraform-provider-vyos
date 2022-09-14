@@ -2,6 +2,7 @@ package vyos
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -32,6 +33,10 @@ func resourceFirewallRule() *resourceInfo.ResourceInfo {
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
+			},
+			Timeouts: &schema.ResourceTimeout{
+				Create: schema.DefaultTimeout(10 * time.Minute),
+				Delete: schema.DefaultTimeout(10 * time.Minute),
 			},
 			Schema: map[string]*schema.Schema{
 				"id": {
