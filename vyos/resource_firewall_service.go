@@ -19,10 +19,18 @@ func resourceInfoFirewallService() *resourceInfo.ResourceInfo {
 		ResourceSchema: &schema.Resource{
 			Description: "[Firewall Global Config](https://docs.vyos.io/en/latest/configuration/firewall/index.html). " +
 				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
-			ReadContext:   resourceFirewallServiceRead,
-			CreateContext: resourceFirewallServiceCreate,
-			UpdateContext: resourceFirewallServiceUpdate,
-			DeleteContext: resourceFirewallServiceDelete,
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoFirewallService())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoFirewallService())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoFirewallService())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoFirewallService())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -205,38 +213,4 @@ func resourceInfoFirewallService() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceFirewallServiceRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceReadGlobal(ctx, d, &client, resourceInfoFirewallService())
-
-}
-
-func resourceFirewallServiceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoFirewallService())
-}
-
-func resourceFirewallServiceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoFirewallService())
-}
-
-func resourceFirewallServiceDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoFirewallService())
 }

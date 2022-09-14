@@ -15,11 +15,19 @@ func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
 		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{"service dhcp-server shared-network-name {{shared_network_name}} subnet"},
 		ResourceSchema: &schema.Resource{
-			Description:   "IPv4 DHCP Server. VyOS uses ISC DHCP server for both IPv4. The network topology is declared by shared-network-name and the subnet declarations. The DHCP service can serve multiple shared networks, with each shared network having 1 or more subnets. Each subnet must be present on an interface. A range can be declared inside a subnet to define a pool of dynamic addresses. Multiple ranges can be defined and can contain holes. Static mappings can be set to assign “static” addresses to clients based on their MAC address.",
-			ReadContext:   resourceDhcpServerRead,
-			CreateContext: resourceDhcpServerCreate,
-			UpdateContext: resourceDhcpServerUpdate,
-			DeleteContext: resourceDhcpServerDelete,
+			Description: "IPv4 DHCP Server. VyOS uses ISC DHCP server for both IPv4. The network topology is declared by shared-network-name and the subnet declarations. The DHCP service can serve multiple shared networks, with each shared network having 1 or more subnets. Each subnet must be present on an interface. A range can be declared inside a subnet to define a pool of dynamic addresses. Multiple ranges can be defined and can contain holes. Static mappings can be set to assign “static” addresses to clients based on their MAC address.",
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpServer())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoDhcpServer())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpServer())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpServer())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -68,38 +76,4 @@ func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceDhcpServerRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceRead(ctx, d, &client, resourceInfoDhcpServer())
-
-}
-
-func resourceDhcpServerCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoDhcpServer())
 }

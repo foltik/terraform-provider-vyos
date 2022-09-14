@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -30,8 +31,8 @@ func dataSourceConfig() *schema.Resource {
 }
 
 func dataSourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	key := d.Get("key").(string)
 
 	value, err := c.Config.Show(ctx, key)

@@ -15,11 +15,19 @@ func resourceInfoDhcpServerSubnetAddressPool() *resourceInfo.ResourceInfo {
 		DeleteStrategy:          resourceInfo.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{},
 		ResourceSchema: &schema.Resource{
-			Description:   "[Create DHCP address range](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html#cfgcmd-set-service-dhcp-server-shared-network-name-name-subnet-subnet-range-n-start-address). DHCP leases are taken from this pool.",
-			ReadContext:   resourceDhcpServerSubnetAddressPoolRead,
-			CreateContext: resourceDhcpServerSubnetAddressPoolCreate,
-			UpdateContext: resourceDhcpServerSubnetAddressPoolUpdate,
-			DeleteContext: resourceDhcpServerSubnetAddressPoolDelete,
+			Description: "[Create DHCP address range](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html#cfgcmd-set-service-dhcp-server-shared-network-name-name-subnet-subnet-range-n-start-address). DHCP leases are taken from this pool.",
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpServerSubnetAddressPool())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoDhcpServerSubnetAddressPool())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpServerSubnetAddressPool())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpServerSubnetAddressPool())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -58,38 +66,4 @@ func resourceInfoDhcpServerSubnetAddressPool() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceDhcpServerSubnetAddressPoolRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceRead(ctx, d, &client, resourceInfoDhcpServer())
-
-}
-
-func resourceDhcpServerSubnetAddressPoolCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerSubnetAddressPoolUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerSubnetAddressPoolDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoDhcpServer())
 }

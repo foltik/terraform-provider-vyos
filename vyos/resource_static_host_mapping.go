@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -40,8 +41,8 @@ func resourceStaticHostMapping() *schema.Resource {
 }
 
 func resourceStaticHostMappingCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	host, ip := d.Get("host").(string), d.Get("ip").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
@@ -51,13 +52,13 @@ func resourceStaticHostMappingCreate(ctx context.Context, d *schema.ResourceData
 	}
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diag.Diagnostics{}
 }
 
 func resourceStaticHostMappingRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	host := d.Get("host").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
@@ -74,8 +75,8 @@ func resourceStaticHostMappingRead(ctx context.Context, d *schema.ResourceData, 
 }
 
 func resourceStaticHostMappingUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	host, ip := d.Get("host").(string), d.Get("ip").(string)
 
 	// If the hostname changes, so does the configuration path,
@@ -95,13 +96,13 @@ func resourceStaticHostMappingUpdate(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diag.Diagnostics{}
 }
 
 func resourceStaticHostMappingDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	host := d.Get("host").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s", host)
@@ -110,6 +111,6 @@ func resourceStaticHostMappingDelete(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diag.Diagnostics{}
 }

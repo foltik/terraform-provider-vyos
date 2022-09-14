@@ -5,18 +5,21 @@ import (
 
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/config"
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
-	"github.com/foltik/vyos-client-go/client"
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Reading resource, global type")
+
+	// Client
+	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_string := resourceInfo.KeyTemplate
 	key := config.ConfigKey{Key: key_string}
-	resouce_id := resourceInfo.StaticId
+	//resource_id := resourceInfo.StaticId
 
 	// Generate config object from VyOS
 	vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
@@ -33,17 +36,19 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, client *cli
 		}
 	}
 
-	d.SetId(resouce_id)
+	//d.SetId(resouce_id)
 	return diags
 }
 
-func ResourceRead(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Reading resource")
+
+	// Client
+	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	resouce_id := config.FormatResourceId(key_template, d)
-	key_string := config.FormatKey(key_template, resouce_id, d)
+	key_string := config.FormatKeyFromId(key_template, d.Id())
 	key := config.ConfigKey{Key: key_string}
 
 	// Generate config object from VyOS
@@ -52,7 +57,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, client *client.Cl
 
 	// If resource does not exist in VyOS
 	if vyos_config == nil {
-		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
+		logger.Log("WARNING", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
 		d.SetId("")
 		return diags
 	} else {
@@ -60,19 +65,26 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, client *client.Cl
 			logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
 			d.Set(parameter, value)
 		}
+
+		for key_parameter, key_value := range config.GetFieldValuePairsFromId(d.Id()) {
+			logger.Log("DEBUG", "Setting key parameter: %s, to key_value: %v", key_parameter, key_value)
+			d.Set(key_parameter, key_value)
+		}
 	}
 
-	d.SetId(resouce_id)
 	return diags
 }
 
-func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Creating resource")
+
+	// Client
+	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	resouce_id := config.FormatResourceId(key_template, d)
-	key_string := config.FormatKey(key_template, resouce_id, d)
+	resource_id := config.FormatResourceId(key_template, d)
+	key_string := config.FormatKeyFromResource(key_template, d)
 	key := config.ConfigKey{Key: key_string}
 
 	// Check if resource exists
@@ -83,14 +95,13 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.
 
 	if vyos_config_self != nil {
 		// TODO context aware? wait for timeout?...
-		return diag.Errorf("Configuration under key '%s' already exists with values: '%v'.", key.Key, vyos_config_self)
+		return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
 	}
 
 	// Check for required resources before create
 	for _, reqKeyTemplateStr := range resourceInfo.CreateRequiredTemplates {
 		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
-		resouce_id := config.FormatResourceId(reqKeyTemplate, d)
-		reqKey := config.ConfigKey{Key: config.FormatKey(reqKeyTemplate, resouce_id, d)}
+		reqKey := config.ConfigKey{Key: config.FormatKeyFromResource(reqKeyTemplate, d)}
 
 		vyos_config, diags_ret := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
 
@@ -108,7 +119,7 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.
 	terraform_config, diags_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
 	diags = append(diags, diags_ret...)
 
-	for _, field := range config.GetKeyFields(key_template) {
+	for _, field := range config.GetKeyFieldsFromTemplate(key_template) {
 		terraform_config.PopChild(field)
 		logger.Log("INFO", "Removed key field from config object: %v", field)
 	}
@@ -122,19 +133,23 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
+
+	d.SetId(resource_id)
 
 	return diags
 }
 
-func ResourceUpdate(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Updating resource")
+
+	// Client
+	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	resouce_id := config.FormatResourceId(key_template, d)
-	key_string := config.FormatKey(key_template, resouce_id, d)
+	key_string := config.FormatKeyFromId(key_template, d.Id())
 	key := config.ConfigKey{Key: key_string}
 
 	// Create terraform config struct
@@ -160,7 +175,7 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, client *client.
 
 	// Remove fields/parameters only internal to terraform so they are not part of the comparison
 	terraform_config.PopChild("id")
-	for _, field := range config.GetKeyFields(key_template) {
+	for _, field := range config.GetKeyFieldsFromTemplate(key_template) {
 		terraform_config.PopChild(field)
 		logger.Log("INFO", "Removed key field from config object: %v", field)
 	}
@@ -191,26 +206,27 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
 
 	return diags
 }
 
-func ResourceDelete(ctx context.Context, d *schema.ResourceData, client *client.Client, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
+func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Deleting resource")
+
+	// Client
+	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	resouce_id := config.FormatResourceId(key_template, d)
-	key_string := config.FormatKey(key_template, resouce_id, d)
+	key_string := config.FormatKeyFromId(key_template, d.Id())
 	key := config.ConfigKey{Key: key_string}
 
 	// Check for blocking resources before delete
 	for _, blockKeyTemplateStr := range resourceInfo.DeleteBlockerTemplates {
 		blockKeyTemplate := config.ConfigKeyTemplate{Template: blockKeyTemplateStr}
-		resouce_id := config.FormatResourceId(blockKeyTemplate, d)
-		blockKey := config.FormatKey(blockKeyTemplate, resouce_id, d)
+		blockKey := config.FormatKeyFromResource(blockKeyTemplate, d)
 		val, err := client.Config.Show(ctx, blockKey)
 		if err != nil {
 			return diag.FromErr(err)
@@ -257,7 +273,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, client *client.
 	}
 
 	// Refresh tf state after update
-	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, client)
+	diags_ret = resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
 
 	return diags

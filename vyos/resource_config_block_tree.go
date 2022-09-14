@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/foltik/vyos-client-go/client"
 )
 
@@ -56,8 +57,8 @@ func resourceConfigBlockTree() *schema.Resource {
 func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	client := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	client := *p.Client
 	path := d.Get("path").(string)
 
 	// Check if config already exists
@@ -83,15 +84,15 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(path)
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	path := d.Id()
 
 	configsTree, err := c.Config.Show(ctx, path)
@@ -128,8 +129,8 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 
 	path := d.Get("path").(string)
 	o, n := d.GetChange("configs")
@@ -161,15 +162,15 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(errSet)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	path := d.Get("path").(string)
 
 	err := c.Config.Delete(ctx, path)
@@ -177,6 +178,6 @@ func resourceConfigBlockTreeDelete(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }

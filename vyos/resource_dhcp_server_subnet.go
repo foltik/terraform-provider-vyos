@@ -15,11 +15,19 @@ func resourceInfoDhcpServerSubnet() *resourceInfo.ResourceInfo {
 		DeleteStrategy:          resourceInfo.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{},
 		ResourceSchema: &schema.Resource{
-			Description:   "[IPv4 DHCP Server Subnet](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html).",
-			ReadContext:   resourceDhcpServerSubnetRead,
-			CreateContext: resourceDhcpServerSubnetCreate,
-			UpdateContext: resourceDhcpServerSubnetUpdate,
-			DeleteContext: resourceDhcpServerSubnetDelete,
+			Description: "[IPv4 DHCP Server Subnet](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html).",
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpServerSubnet())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoDhcpServerSubnet())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpServerSubnet())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpServerSubnet())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -97,38 +105,4 @@ func resourceInfoDhcpServerSubnet() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceDhcpServerSubnetRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceRead(ctx, d, &client, resourceInfoDhcpServer())
-
-}
-
-func resourceDhcpServerSubnetCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerSubnetUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServerSubnetDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoDhcpServer())
 }

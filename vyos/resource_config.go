@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -47,8 +48,8 @@ func resourceConfig() *schema.Resource {
 }
 
 func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	key, value := d.Get("key").(string), d.Get("value").(string)
 
 	var diags diag.Diagnostics
@@ -69,13 +70,13 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	d.SetId(key)
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	key := d.Id()
 
 	// Convert old unix timestamp style ID to key path for existing resources to support importing
@@ -104,8 +105,8 @@ func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	key, value := d.Get("key").(string), d.Get("value").(string)
 
 	err := c.Config.Set(ctx, key, value)
@@ -113,13 +114,13 @@ func resourceConfigUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diag.Diagnostics{}
 }
 
 func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	key := d.Get("key").(string)
 
 	err := c.Config.Delete(ctx, key)
@@ -127,6 +128,6 @@ func resourceConfigDelete(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diag.Diagnostics{}
 }

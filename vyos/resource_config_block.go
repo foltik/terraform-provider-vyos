@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"time"
 
+	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -56,8 +57,8 @@ func resourceConfigBlock() *schema.Resource {
 func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	client := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	client := *p.Client
 	path := d.Get("path").(string)
 
 	// Check if config already exists
@@ -90,15 +91,15 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	d.SetId(path)
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	path := d.Id()
 
 	configs, err := c.Config.Show(ctx, path)
@@ -135,8 +136,8 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 
 	path := d.Get("path").(string)
 	o, n := d.GetChange("configs")
@@ -168,15 +169,15 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(errSet)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }
 
 func resourceConfigBlockDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	p := m.(*ProviderClass)
-	c := *p.client
+	p := m.(*providerStructure.ProviderClass)
+	c := *p.Client
 	path := d.Get("path").(string)
 
 	err := c.Config.Delete(ctx, path)
@@ -184,6 +185,6 @@ func resourceConfigBlockDelete(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	p.conditionalSave(ctx)
+	p.ConditionalSave(ctx)
 	return diags
 }

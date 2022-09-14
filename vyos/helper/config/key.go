@@ -31,7 +31,7 @@ func FormatResourceId(template ConfigKeyTemplate, d *schema.ResourceData) string
 
 	var id string
 
-	for _, attr := range GetKeyFields(template) {
+	for _, attr := range GetKeyFieldsFromTemplate(template) {
 		// Build terraform resource ID from template fields one by one
 
 		logger.Log("TRACE", "adding attr: '%s'", attr)
@@ -48,13 +48,13 @@ func FormatResourceId(template ConfigKeyTemplate, d *schema.ResourceData) string
 	return id
 }
 
-func FormatKey(template ConfigKeyTemplate, id string, d *schema.ResourceData) string {
-	// Format VyOS compliant key string
+func FormatKeyFromResource(template ConfigKeyTemplate, d *schema.ResourceData) string {
+	// Format VyOS compliant key string from terraform resource data
 
-	logger.Log("TRACE", "template: '%s', id: '%s'", template, id)
+	logger.Log("TRACE", "template: '%s'", template)
 
 	key := template.Template
-	for _, parameter := range GetKeyFields(template) {
+	for _, parameter := range GetKeyFieldsFromTemplate(template) {
 		// Loop over each templated parameter field
 
 		// Get parameter value for current templated field
@@ -73,7 +73,29 @@ func FormatKey(template ConfigKeyTemplate, id string, d *schema.ResourceData) st
 	return key
 }
 
-func GetKeyFields(template ConfigKeyTemplate) []string {
+func FormatKeyFromId(template ConfigKeyTemplate, id string) string {
+	// Format VyOS compliant key string from reource ID string
+
+	logger.Log("TRACE", "id: '%s'", id)
+
+	key := template.Template
+	for field, value := range GetFieldValuePairsFromId(id) {
+		// Loop over each templated parameter field
+
+		logger.Log("TRACE", "replacing 'parameter = value': '%s = %s'.", field, value)
+
+		// Replace templated key parameter with value one by one
+		key = strings.Replace(key, fmt.Sprintf("{{%s}}", field), value, 1)
+
+		logger.Log("TRACE", "Current key: '%s'", key)
+	}
+
+	logger.Log("TRACE", "Complete key: '%s'", key)
+
+	return key
+}
+
+func GetKeyFieldsFromTemplate(template ConfigKeyTemplate) []string {
 	// Use key template to generate a list of resource ID parameters
 
 	logger.Log("TRACE", "template: '%s'", template)
@@ -87,4 +109,22 @@ func GetKeyFields(template ConfigKeyTemplate) []string {
 		fields[idx] = strings.Trim(field, `{}`)
 	}
 	return fields
+}
+
+func GetFieldValuePairsFromId(id string) map[string]string {
+	// Split resource ID into key value pairs.
+	// Required ID format: parameter=value|parameter2=value2|parameter3=value3
+
+	logger.Log("TRACE", "ID: '%s'", id)
+
+	field_value_pairs := make(map[string]string)
+
+	for _, pair_str := range strings.Split(id, "|") {
+		pair_slice := strings.Split(pair_str, "=")
+		field := pair_slice[0]
+		value := pair_slice[1]
+		logger.Log("TRACE", "Field: '%s', Value: '%s'", field, value)
+		field_value_pairs[field] = value
+	}
+	return field_value_pairs
 }

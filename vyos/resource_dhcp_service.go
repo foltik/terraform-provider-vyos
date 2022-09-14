@@ -19,10 +19,18 @@ func resourceInfoDhcpService() *resourceInfo.ResourceInfo {
 		ResourceSchema: &schema.Resource{
 			Description: "[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). " +
 				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
-			ReadContext:   resourceDhcpServiceRead,
-			CreateContext: resourceDhcpServiceCreate,
-			UpdateContext: resourceDhcpServiceUpdate,
-			DeleteContext: resourceDhcpServiceDelete,
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpService())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceReadGlobal(ctx, d, m, resourceInfoDhcpService())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpService())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpService())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -82,38 +90,4 @@ func resourceInfoDhcpService() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceDhcpServiceRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceReadGlobal(ctx, d, &client, resourceInfoDhcpServer())
-
-}
-
-func resourceDhcpServiceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServiceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoDhcpServer())
-}
-
-func resourceDhcpServiceDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoDhcpServer())
 }

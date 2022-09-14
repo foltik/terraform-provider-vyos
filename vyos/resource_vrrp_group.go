@@ -24,10 +24,18 @@ func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
 				"VRRP keepalive packets use multicast, and VRRP setups are limited to a single datalink layer segment. You can setup multiple VRRP groups (also called virtual routers). " +
 				"Virtual routers are identified by a VRID (Virtual Router IDentifier). " +
 				"If you setup multiple groups on the same interface, their VRIDs must be unique, but it’s possible (even if not recommended for readability reasons) to use duplicate VRIDs on different interfaces.",
-			ReadContext:   resourceVrrpGroupRead,
-			CreateContext: resourceVrrpGroupCreate,
-			UpdateContext: resourceVrrpGroupUpdate,
-			DeleteContext: resourceVrrpGroupDelete,
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoVrrpGroup())
+			},
+			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoVrrpGroup())
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoVrrpGroup())
+			},
+			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
+				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoVrrpGroup())
+			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
 			},
@@ -201,38 +209,4 @@ func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
 			},
 		},
 	}
-}
-
-func resourceVrrpGroupRead(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceRead(ctx, d, &client, resourceInfoVrrpGroup())
-
-}
-
-func resourceVrrpGroupCreate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceCreate(ctx, d, &client, resourceInfoVrrpGroup())
-}
-
-func resourceVrrpGroupUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceUpdate(ctx, d, &client, resourceInfoVrrpGroup())
-}
-
-func resourceVrrpGroupDelete(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-	// Client
-	p := m.(*ProviderClass)
-	client := *p.client
-
-	return resourceInfo.ResourceDelete(ctx, d, &client, resourceInfoVrrpGroup())
 }
