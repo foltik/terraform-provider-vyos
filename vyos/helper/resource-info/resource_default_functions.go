@@ -45,7 +45,6 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface
 		}
 	}
 
-	//d.SetId(resouce_id)
 	return diags
 }
 
@@ -155,11 +154,12 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		return diag.FromErr(err)
 	}
 
+	// Set ID (used in read function and must be set before that)
+	d.SetId(resource_id)
+
 	// Refresh tf state after update
 	diags_ret := resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
 	diags = append(diags, diags_ret...)
-
-	d.SetId(resource_id)
 
 	return diags
 }
