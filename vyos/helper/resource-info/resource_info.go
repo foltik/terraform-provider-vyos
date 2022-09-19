@@ -16,6 +16,10 @@ const (
 	DeleteTypeParameters DELETETYPE = "parameter"
 )
 
+/*
+	StaticId is used for global resources, where only one can exist at a time.
+	Do not use KeyTemplate and StaticId at the same time.
+*/
 type ResourceInfo struct {
 	KeyTemplate             string
 	CreateRequiredTemplates []string

@@ -1,0 +1,1 @@
+terraform import vyos_firewall_service.this global

@@ -16,21 +16,21 @@ func resourceInfoDhcpService() *resourceInfo.ResourceInfo {
 		CreateRequiredTemplates: []string{},
 		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{},
-		StaticId:                "dhcpService",
+		StaticId:                "global",
 		ResourceSchema: &schema.Resource{
 			Description: "[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). " +
 				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpService())
+				return resourceInfo.ResourceCreateGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
 				return resourceInfo.ResourceReadGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpService())
+				return resourceInfo.ResourceUpdateGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpService())
+				return resourceInfo.ResourceDeleteGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,

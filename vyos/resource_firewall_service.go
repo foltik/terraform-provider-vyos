@@ -10,36 +10,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-/* TODO
-
- Error: Configuration under key 'firewall' already exists, consider an import of id: ''
-│
-│   with vyos_firewall_service.vyos02,
-│   on main.tf line 1, in resource "vyos_firewall_service" "vyos02":
-│    1: resource "vyos_firewall_service" "vyos02" {
-*/
-
 func resourceInfoFirewallService() *resourceInfo.ResourceInfo {
 	return &resourceInfo.ResourceInfo{
 		KeyTemplate:             "firewall",
 		CreateRequiredTemplates: []string{},
 		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{},
-		StaticId:                "firewallService",
+		StaticId:                "global",
 		ResourceSchema: &schema.Resource{
 			Description: "[Firewall Global Config](https://docs.vyos.io/en/latest/configuration/firewall/index.html). " +
 				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoFirewallService())
+				return resourceInfo.ResourceCreateGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
 				return resourceInfo.ResourceReadGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoFirewallService())
+				return resourceInfo.ResourceUpdateGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoFirewallService())
+				return resourceInfo.ResourceDeleteGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
