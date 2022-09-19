@@ -143,6 +143,19 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 						}
 					}
 				}
+			} else if resource_schema_elem, ok := resource_schema.Elem.(*schema.Schema); ok {
+				logger.Log("TRACE", "resource_schema_elem: '%#v'", resource_schema_elem)
+
+				switch resource_schema_elem.Type {
+				case schema.TypeBool, schema.TypeFloat, schema.TypeInt, schema.TypeString:
+					logger.Log("TRACE", "adding value: parent_vyos_native_config: '%#v'", parent_vyos_native_config)
+					for _, v := range parent_vyos_native_config.([]interface{}) {
+						config_block.AddValue(resource_schema_elem.Type, v.(string))
+					}
+				default:
+					logger.Log("ERROR", "resource_schema_elem.Type is unhandled: %#v", resource_schema_elem.Type)
+					return fmt.Errorf("resource_schema_elem.Type is unhandled: %#v", resource_schema_elem.Type)
+				}
 			} else {
 				// Make unhandled cases visible
 				logger.Log("ERROR", "resource_schema.Elem is unhandled: %#v", resource_schema)
@@ -327,6 +340,19 @@ func terraformWalker(ctx context.Context, config_block *ConfigBlock, resource_sc
 							logger.Log("TRACE", "could not find key: '%s' in terraform_config: %#v", key_string, terraform_config)
 						}
 					}
+				}
+			} else if resource_schema_elem, ok := resource_schema.Elem.(*schema.Schema); ok {
+				logger.Log("TRACE", "resource_schema_elem: '%#v'", resource_schema_elem)
+
+				switch resource_schema_elem.Type {
+				case schema.TypeBool, schema.TypeFloat, schema.TypeInt, schema.TypeString:
+					logger.Log("TRACE", "adding value: terraform_native_config: '%#v'", terraform_native_config)
+					for _, v := range terraform_native_config.([]interface{}) {
+						config_block.AddValue(resource_schema_elem.Type, v.(string))
+					}
+				default:
+					logger.Log("ERROR", "resource_schema_elem.Type is unhandled: %#v", resource_schema_elem.Type)
+					return fmt.Errorf("resource_schema_elem.Type is unhandled: %#v", resource_schema_elem.Type)
 				}
 			} else {
 				// Make unhandled cases visible

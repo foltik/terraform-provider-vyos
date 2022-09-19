@@ -19,7 +19,7 @@ func resourceInfoDhcpService() *resourceInfo.ResourceInfo {
 		StaticId:                "global",
 		ResourceSchema: &schema.Resource{
 			Description: "[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). " +
-				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
+				"**This is a global config, having more than one of this resource will cause continues diffs to occur.**",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
 				return resourceInfo.ResourceCreateGlobal(ctx, d, m, resourceInfoDhcpService())
 			},

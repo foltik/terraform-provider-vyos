@@ -37,7 +37,10 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 
 	// Generate config object from VyOS
 	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diag.FromErr(err_ret)...)
+	if err_ret != nil {
+		diags = append(diags, diag.FromErr(err_ret)...)
+		return diags
+	}
 
 	// If resource does not exist in VyOS
 	if vyos_config == nil {
@@ -380,7 +383,10 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface
 
 	// Generate config object from VyOS
 	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	diags = append(diags, diag.FromErr(err_ret)...)
+	if err_ret != nil {
+		diags = append(diags, diag.FromErr(err_ret)...)
+		return diags
+	}
 
 	if vyos_config == nil {
 		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
