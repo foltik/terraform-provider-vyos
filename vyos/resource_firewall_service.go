@@ -10,6 +10,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+/* TODO
+
+ Error: Configuration under key 'firewall' already exists, consider an import of id: ''
+│
+│   with vyos_firewall_service.vyos02,
+│   on main.tf line 1, in resource "vyos_firewall_service" "vyos02":
+│    1: resource "vyos_firewall_service" "vyos02" {
+*/
+
 func resourceInfoFirewallService() *resourceInfo.ResourceInfo {
 	return &resourceInfo.ResourceInfo{
 		KeyTemplate:             "firewall",

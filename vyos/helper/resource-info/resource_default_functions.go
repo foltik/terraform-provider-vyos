@@ -3,6 +3,8 @@ package resourceInfo
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/foltik/terraform-provider-vyos/vyos/helper/config"
@@ -76,7 +78,46 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 
 		for key_parameter, key_value := range config.GetFieldValuePairsFromId(d.Id()) {
 			logger.Log("DEBUG", "Setting key parameter: %s, to key_value: %v", key_parameter, key_value)
-			d.Set(key_parameter, key_value)
+
+			switch resourceInfo.ResourceSchema.Schema[key_parameter].Type {
+			case schema.TypeBool:
+				logger.Log("DEBUG", "Converting to bool")
+
+				if strings.ToLower(key_value) == "true" {
+					d.Set(key_parameter, true)
+				} else if strings.ToLower(key_value) == "false" {
+					d.Set(key_parameter, false)
+				} else {
+					diags = append(diags, diag.Errorf("Key parameter should be bool, but was not true or false. Instead got: %s", key_value)...)
+					return diags
+				}
+
+			case schema.TypeFloat:
+				logger.Log("DEBUG", "Converting to float")
+
+				f, err := strconv.ParseFloat(key_value, 64)
+				if err != nil {
+					diags = append(diags, diag.FromErr(err)...)
+					return diags
+				}
+				d.Set(key_parameter, f)
+			case schema.TypeInt:
+				logger.Log("DEBUG", "Converting to int")
+
+				i, err := strconv.ParseInt(key_value, 10, 32)
+				if err != nil {
+					diags = append(diags, diag.FromErr(err)...)
+					return diags
+				}
+				d.Set(key_parameter, i)
+			case schema.TypeString:
+				logger.Log("DEBUG", "Keeping as string")
+				d.Set(key_parameter, key_value)
+			default:
+				diags = append(diags, diag.Errorf("Key parameter can only be of type bool, float, int, or string. Got schema.Type...: %s", resourceInfo.ResourceSchema.Schema[key_parameter].Type)...)
+				return diags
+			}
+
 		}
 	}
 

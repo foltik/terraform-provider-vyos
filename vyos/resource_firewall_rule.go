@@ -84,7 +84,7 @@ func resourceFirewallRule() *resourceInfo.ResourceInfo {
 				"protocol": {
 					Description: "Match a protocol criteria. A protocol number or a name which is defined in VyOS instances: `/etc/protocols` file. Special names are `all` for all protocols and `tcp_udp` for tcp and udp based packets. The `!` negate the selected protocol. `[<text> | <0-255> | all | tcp_udp]`",
 					Type:        schema.TypeString,
-					Default:     "tcp",
+					Default:     "all",
 					Optional:    true,
 				},
 
@@ -226,8 +226,9 @@ func resourceFirewallRule() *resourceInfo.ResourceInfo {
 							},
 							"group": {
 								Description: "Use a pre-defined group.",
-								Type:        schema.TypeSet,
+								Type:        schema.TypeList,
 								Optional:    true,
+								MaxItems:    1,
 								Elem: &schema.Resource{
 									Schema: map[string]*schema.Schema{
 										"address_group": {
