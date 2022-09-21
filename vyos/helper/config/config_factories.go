@@ -178,8 +178,8 @@ func vyosWalker(ctx context.Context, config_block *ConfigBlock, resource_schema 
 	return nil
 }
 
-func NewConfigFromTerraform(ctx context.Context, vyos_key *ConfigKey, resource_schema *schema.Resource, data *schema.ResourceData) (*ConfigBlock, error) {
-	id := data.Get("id")
+func NewConfigFromTerraform(ctx context.Context, vyos_key *ConfigKey, resource_schema *schema.Resource, d *schema.ResourceData) (*ConfigBlock, error) {
+	id := d.Get("id")
 	logger.Log("DEBUG", "resource ID: %#v", id)
 
 	config_block := ConfigBlock{
@@ -187,7 +187,7 @@ func NewConfigFromTerraform(ctx context.Context, vyos_key *ConfigKey, resource_s
 	}
 
 	for parameter_key, parameter_schema := range resource_schema.Schema {
-		if terraform_native_config, ok := data.GetOk(parameter_key); ok {
+		if terraform_native_config, ok := d.GetOk(parameter_key); ok {
 			parameter_config_block := config_block.CreateChild(parameter_key, parameter_schema.Type)
 
 			err := terraformWalker(ctx, parameter_config_block, parameter_schema, terraform_native_config)

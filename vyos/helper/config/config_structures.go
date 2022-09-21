@@ -481,23 +481,36 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 		key: cfg.key,
 	}
 
-	// Find missing values
+	// Find missing and changed values
 	logger.Log("TRACE", "{%s} find missing values", cfg.key)
 	if compare_vals, ok := compare_config.GetValues(); ok {
 		for _, compare_val := range compare_vals {
 			found_val := false
 
+			// Check each value
 			for _, self_val := range cfg.values {
 
+				if (compare_val.value_type == self_val.value_type) && (cfg.resource_type >= schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
+					if compare_val.value == self_val.value {
+						logger.Log("TRACE", "{%s} Is of native type, and both has equal value: '%s', skipping.", cfg.key, self_val.value)
+					} else {
+						logger.Log("TRACE", "{%s} Is of native type, and both has a value, assuming change '%s' => '%s'", cfg.key, compare_val.value, self_val.value)
+						found_val = true
+						changed.AddValue(self_val.value_type, self_val.value)
+						has_changed = true
+						break
+					}
+				}
+
 				if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
-					logger.Log("TRACE", "{%s} Both has value {%s}", cfg.key, self_val.value)
+					logger.Log("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
 					found_val = true
 					break
 				}
 			}
 
 			if !found_val {
-				logger.Log("TRACE", "{%s} Missing val {%s}", cfg.key, compare_val.value)
+				logger.Log("TRACE", "{%s} Missing val '%s'", cfg.key, compare_val.value)
 				missing.AddValue(compare_val.value_type, compare_val.value)
 				has_missing = true
 			}
@@ -511,16 +524,21 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 			found_val := false
 
 			for _, compare_val := range compare_config.values {
+				if (compare_val.value_type == self_val.value_type) && (cfg.resource_type == schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
+					logger.Log("TRACE", "{%s} Is of native type, and both has a value, assuming change '%s' => '%s', should have been handled together with missing values, skipping.", cfg.key, compare_val.value, self_val.value)
+					found_val = true
+					break
+				}
 
 				if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
-					logger.Log("TRACE", "{%s} Both has value {%s}", cfg.key, self_val.value)
+					logger.Log("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
 					found_val = true
 					break
 				}
 			}
 
 			if !found_val {
-				logger.Log("TRACE", "{%s} New val {%s}", cfg.key, self_val.value)
+				logger.Log("TRACE", "{%s} New val '%s'", cfg.key, self_val.value)
 				changed.AddValue(self_val.value_type, self_val.value)
 				has_changed = true
 			}
@@ -548,13 +566,13 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 			found_child := false
 
 			if self_child, ok := cfg.GetChild(compare_child_key.Key); ok {
-				logger.Log("TRACE", "{%s} Both has child {%s}", cfg.key, self_child.key)
+				logger.Log("TRACE", "{%s} Both has child '%s'", cfg.key, self_child.key)
 				found_child = true
 				continue
 			}
 
 			if !found_child {
-				logger.Log("TRACE", "{%s} Missing child {%s}", cfg.key, compare_child_key)
+				logger.Log("TRACE", "{%s} Missing child '%s'", cfg.key, compare_child_key)
 				missing.AddChild(compare_child_val)
 				has_missing = true
 			}
@@ -569,13 +587,13 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 			found_child := false
 
 			if compare_child, ok := compare_config.GetChild(self_child_key.Key); ok {
-				logger.Log("TRACE", "{%s} Both has child {%s}", cfg.key, compare_child.key)
+				logger.Log("TRACE", "{%s} Both has child '%s'", cfg.key, compare_child.key)
 				found_child = true
 				continue
 			}
 
 			if !found_child {
-				logger.Log("TRACE", "{%s} New config child found {%s}", cfg.key, self_child_key)
+				logger.Log("TRACE", "{%s} New config child found '%s'", cfg.key, self_child_key)
 				changed.AddChild(self_child_val)
 				has_changed = true
 			}
@@ -587,7 +605,7 @@ func (cfg *ConfigBlock) GetDifference(compare_config *ConfigBlock) (changed *Con
 	if self_children, ok := cfg.GetChildren(); ok {
 		for self_child_key, self_child_val := range self_children {
 			if _, is_missing := missing.GetChild(self_child_key.Key); is_missing {
-				logger.Log("TRACE", "{%s} Child already marked as missing '{%s}'", cfg.key, self_child_key.Key)
+				logger.Log("TRACE", "{%s} Child already marked as missing '%s'", cfg.key, self_child_key.Key)
 				continue
 			}
 

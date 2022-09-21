@@ -24,6 +24,18 @@ const API_TIMEOUT_BUFFER_IN_SECONDS = 5
 // TODO refactor common logic into smaller functions and reuse them in global / non global functions.
 // TODO refactor commom logic between operations into smaller functions for reuse
 
+func keyAndTemplate(d *schema.ResourceData, resourceInfo *ResourceInfo) (config.ConfigKey, config.ConfigKeyTemplate) {
+	/*
+		Useful for read, update and delete functions.
+		Create function does not have an ID to rely on and can currently not use this to get the key and template
+	*/
+	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
+	key_string := config.FormatKeyFromId(key_template, d.Id())
+	key := config.ConfigKey{Key: key_string}
+
+	return key, key_template
+}
+
 func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
 	logger.Log("INFO", "Reading resource")
 
@@ -31,9 +43,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
-	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	key_string := config.FormatKeyFromId(key_template, d.Id())
-	key := config.ConfigKey{Key: key_string}
+	key, _ := keyAndTemplate(d, resourceInfo)
 
 	// Generate config object from VyOS
 	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
@@ -200,9 +210,7 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
-	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	key_string := config.FormatKeyFromId(key_template, d.Id())
-	key := config.ConfigKey{Key: key_string}
+	key, key_template := keyAndTemplate(d, resourceInfo)
 
 	// Create terraform config struct
 	terraform_key := key
@@ -275,9 +283,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
-	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	key_string := config.FormatKeyFromId(key_template, d.Id())
-	key := config.ConfigKey{Key: key_string}
+	key, _ := keyAndTemplate(d, resourceInfo)
 
 	// Check for blocking resources before delete
 	for _, blockKeyTemplateStr := range resourceInfo.DeleteBlockerTemplates {
@@ -320,14 +326,14 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Remove resource
 	_, delete_config := vyos_config.MarshalVyos()
-	logger.Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key_string, resourceInfo.DeleteStrategy, delete_config)
+	logger.Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key.Key, resourceInfo.DeleteStrategy, delete_config)
 
 	var err error
 
 	if resourceInfo.DeleteStrategy == DeleteTypeResource {
-		err = client.Config.Delete(ctx, key_string)
+		err = client.Config.Delete(ctx, key.Key)
 	} else if resourceInfo.DeleteStrategy == DeleteTypeParameters {
-		err = client.Config.Delete(ctx, key_string, delete_config)
+		err = client.Config.Delete(ctx, key.Key, delete_config)
 	} else {
 		logger.Log("ERROR", "Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
 		return diag.Errorf("Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
