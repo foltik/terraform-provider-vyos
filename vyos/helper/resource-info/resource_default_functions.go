@@ -137,17 +137,6 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	key_string := config.FormatKeyFromResource(key_template, d)
 	key := config.ConfigKey{Key: key_string}
 
-	// Check if resource exists
-	vyos_config_self, err_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-	if err_self != nil {
-		return diag.FromErr(err_self)
-	}
-
-	if vyos_config_self != nil {
-		logger.Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
-		return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
-	}
-
 	// Check for required resources before create
 	for _, reqKeyTemplateStr := range resourceInfo.CreateRequiredTemplates {
 		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
@@ -155,6 +144,17 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
+
+			// Check if resource exists (changing name of a resource will cause this to error out before the old resource is deleted at times)
+			vyos_config_self, err_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+			if err_self != nil {
+				return resource.NonRetryableError(err_self)
+			}
+
+			if vyos_config_self != nil {
+				logger.Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
+				return resource.RetryableError(fmt.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id))
+			}
 
 			// Get required config
 			vyos_config, sub_err := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
