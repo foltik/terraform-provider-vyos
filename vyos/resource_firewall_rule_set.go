@@ -57,9 +57,10 @@ func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
 					ForceNew: true,
 				},
 				"description": {
-					Description: "Rule-set description text.",
+					Description: "Group description text.",
 					Type:        schema.TypeString,
 					Optional:    true,
+					Default:     "Managed by terraform",
 				},
 				"default_action": {
 					Description:      "Default action of the rule-set if no rule matched a packet criteria.",

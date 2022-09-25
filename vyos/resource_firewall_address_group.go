@@ -61,6 +61,7 @@ func resourceFirewallAddressGroup() *resourceInfo.ResourceInfo {
 					Description: "Group description text.",
 					Type:        schema.TypeString,
 					Optional:    true,
+					Default:     "Managed by terraform",
 				},
 			},
 		},

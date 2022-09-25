@@ -56,6 +56,12 @@ func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
 					Required:         true,
 					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
 				},
+				"description": {
+					Description: "Group description text.",
+					Type:        schema.TypeString,
+					Optional:    true,
+					Default:     "Managed by terraform",
+				},
 				"interface": {
 					Description: "Network interface.",
 					Type:        schema.TypeString,

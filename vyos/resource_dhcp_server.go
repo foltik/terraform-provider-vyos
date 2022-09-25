@@ -43,9 +43,16 @@ func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
 					Computed:    true,
 				},
 				"shared_network_name": {
-					Description: "Name of the network the DCHP server config is responsible for.",
+					Description:      "Name of the network the DCHP server config is responsible for.",
+					Type:             schema.TypeString,
+					Required:         true,
+					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
+				},
+				"description": {
+					Description: "Group description text.",
 					Type:        schema.TypeString,
-					Required:    true,
+					Optional:    true,
+					Default:     "Managed by terraform",
 				},
 				"domain_name": {
 					Description: "The domain-name parameter should be the domain name that will be appended to the client’s hostname to form a fully-qualified domain-name (FQDN) (DHCP Option 015).",

@@ -57,9 +57,10 @@ func resourceFirewallRule() *resourceInfo.ResourceInfo {
 					ForceNew:    true,
 				},
 				"description": {
-					Description: "Rule description text. Without a good description it can be hard to know why the rule exists.",
+					Description: "Group description text.",
 					Type:        schema.TypeString,
 					Optional:    true,
+					Default:     "Managed by terraform",
 				},
 				"action": {
 					Description:      "Action of this rule.",
