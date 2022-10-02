@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func Log(level string, msg string, values ...interface{}) {
+func logger(level string, msg string, values ...interface{}) {
 	pc, file, line, _ := runtime.Caller(1)
 
 	file_last_slash := strings.LastIndexByte(file, '/')
