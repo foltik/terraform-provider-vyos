@@ -4,32 +4,31 @@ import (
 	"context"
 	"time"
 
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
 )
 
-func resourceFirewallRule() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceFirewallRule() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "firewall name {{rule_set}} rule {{priority}}",
 		CreateRequiredTemplates: []string{"firewall name {{rule_set}}"},
-		DeleteStrategy:          resourceInfo.DeleteTypeResource,
+		DeleteStrategy:          schemabased.DeleteTypeResource,
 		DeleteBlockerTemplates:  nil,
 		ResourceSchema: &schema.Resource{
 			Description: "Firewall rules with criteria matching that can be applied to an interface or a zone, for more information see [VyOS Firewall doc](https://docs.vyos.io/en/latest/configuration/firewall/index.html#matching-criteria).",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceFirewallRule())
+				return schemabased.ResourceCreate(ctx, d, m, resourceFirewallRule())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceRead(ctx, d, m, resourceFirewallRule())
+				return schemabased.ResourceRead(ctx, d, m, resourceFirewallRule())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceFirewallRule())
+				return schemabased.ResourceUpdate(ctx, d, m, resourceFirewallRule())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceFirewallRule())
+				return schemabased.ResourceDelete(ctx, d, m, resourceFirewallRule())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
@@ -48,7 +47,7 @@ func resourceFirewallRule() *resourceInfo.ResourceInfo {
 					Description:      "Rule set name this rule belongs to.",
 					Type:             schema.TypeString,
 					Required:         true,
-					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
+					ValidateDiagFunc: schemabased.ValidateDiagStringKeyField(),
 				},
 				"priority": {
 					Description: "_Must be unique within a rule set_. Data packets go through the rules based on the priority, from lowest to highest beginning at 0, at the first match the action of the rule will be applied and execution stops.",

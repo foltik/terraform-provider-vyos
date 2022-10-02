@@ -4,33 +4,33 @@ import (
 	"context"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceInfoFirewallService() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceInfoFirewallService() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "firewall",
 		CreateRequiredTemplates: []string{},
-		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
+		DeleteStrategy:          schemabased.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{},
 		StaticId:                "global",
 		ResourceSchema: &schema.Resource{
 			Description: "[Firewall Global Config](https://docs.vyos.io/en/latest/configuration/firewall/index.html). " +
 				"**This is a global config, having more than one of this resource will casue continues diffs to occur.**",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreateGlobal(ctx, d, m, resourceInfoFirewallService())
+				return schemabased.ResourceCreateGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceReadGlobal(ctx, d, m, resourceInfoFirewallService())
+				return schemabased.ResourceReadGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdateGlobal(ctx, d, m, resourceInfoFirewallService())
+				return schemabased.ResourceUpdateGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDeleteGlobal(ctx, d, m, resourceInfoFirewallService())
+				return schemabased.ResourceDeleteGlobal(ctx, d, m, resourceInfoFirewallService())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,

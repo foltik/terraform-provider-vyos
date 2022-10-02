@@ -5,31 +5,31 @@ import (
 	"regexp"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceFirewallRuleSet() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "firewall name {{name}}",
 		CreateRequiredTemplates: nil,
-		DeleteStrategy:          resourceInfo.DeleteTypeResource,
+		DeleteStrategy:          schemabased.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{"firewall name {{name}} rule"},
 		ResourceSchema: &schema.Resource{
 			Description: "A rule-set is a named collection of firewall rules that can be applied to an interface or a zone, for more information see [VyOS Firewall doc](https://docs.vyos.io/en/latest/configuration/firewall/index.html#overview).",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceFirewallRuleSet())
+				return schemabased.ResourceCreate(ctx, d, m, resourceFirewallRuleSet())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceRead(ctx, d, m, resourceFirewallRuleSet())
+				return schemabased.ResourceRead(ctx, d, m, resourceFirewallRuleSet())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceFirewallRuleSet())
+				return schemabased.ResourceUpdate(ctx, d, m, resourceFirewallRuleSet())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceFirewallRuleSet())
+				return schemabased.ResourceDelete(ctx, d, m, resourceFirewallRuleSet())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
@@ -50,7 +50,7 @@ func resourceFirewallRuleSet() *resourceInfo.ResourceInfo {
 					Required:    true,
 					ValidateDiagFunc: validation.ToDiagFunc(
 						validation.All(
-							resourceInfo.ValidateStringKeyField(),
+							schemabased.ValidateStringKeyField(),
 							validation.StringMatch(regexp.MustCompile("^[-A-Za-z]+$"), "Rule-set name can only contain letters and hyphens."),
 						),
 					),

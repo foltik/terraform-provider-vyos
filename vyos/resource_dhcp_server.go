@@ -4,30 +4,30 @@ import (
 	"context"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceInfoDhcpServer() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "service dhcp-server shared-network-name {{shared_network_name}}",
 		CreateRequiredTemplates: []string{},
-		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
+		DeleteStrategy:          schemabased.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{"service dhcp-server shared-network-name {{shared_network_name}} subnet"},
 		ResourceSchema: &schema.Resource{
 			Description: "IPv4 DHCP Server. VyOS uses ISC DHCP server for both IPv4. The network topology is declared by shared-network-name and the subnet declarations. The DHCP service can serve multiple shared networks, with each shared network having 1 or more subnets. Each subnet must be present on an interface. A range can be declared inside a subnet to define a pool of dynamic addresses. Multiple ranges can be defined and can contain holes. Static mappings can be set to assign “static” addresses to clients based on their MAC address.",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpServer())
+				return schemabased.ResourceCreate(ctx, d, m, resourceInfoDhcpServer())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoDhcpServer())
+				return schemabased.ResourceRead(ctx, d, m, resourceInfoDhcpServer())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpServer())
+				return schemabased.ResourceUpdate(ctx, d, m, resourceInfoDhcpServer())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpServer())
+				return schemabased.ResourceDelete(ctx, d, m, resourceInfoDhcpServer())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
@@ -46,7 +46,7 @@ func resourceInfoDhcpServer() *resourceInfo.ResourceInfo {
 					Description:      "Name of the network the DCHP server config is responsible for.",
 					Type:             schema.TypeString,
 					Required:         true,
-					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
+					ValidateDiagFunc: schemabased.ValidateDiagStringKeyField(),
 				},
 				"description": {
 					Description: "Group description text.",

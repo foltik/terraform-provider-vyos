@@ -4,33 +4,33 @@ import (
 	"context"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceInfoDhcpService() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceInfoDhcpService() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "service dhcp-server",
 		CreateRequiredTemplates: []string{},
-		DeleteStrategy:          resourceInfo.DeleteTypeParameters,
+		DeleteStrategy:          schemabased.DeleteTypeParameters,
 		DeleteBlockerTemplates:  []string{},
 		StaticId:                "global",
 		ResourceSchema: &schema.Resource{
 			Description: "[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). " +
 				"**This is a global config, having more than one of this resource will cause continues diffs to occur.**",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreateGlobal(ctx, d, m, resourceInfoDhcpService())
+				return schemabased.ResourceCreateGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceReadGlobal(ctx, d, m, resourceInfoDhcpService())
+				return schemabased.ResourceReadGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdateGlobal(ctx, d, m, resourceInfoDhcpService())
+				return schemabased.ResourceUpdateGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDeleteGlobal(ctx, d, m, resourceInfoDhcpService())
+				return schemabased.ResourceDeleteGlobal(ctx, d, m, resourceInfoDhcpService())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,

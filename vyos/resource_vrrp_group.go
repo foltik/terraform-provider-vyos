@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceInfoVrrpGroup() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "high-availability vrrp group {{name}}",
 		CreateRequiredTemplates: []string{},
-		DeleteStrategy:          resourceInfo.DeleteTypeResource,
+		DeleteStrategy:          schemabased.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{},
 		ResourceSchema: &schema.Resource{
 			Description: "[VRRP](https://docs.vyos.io/en/latest/configuration/highavailability/index.html) (Virtual Router Redundancy Protocol) provides active/backup redundancy for routers. " +
@@ -26,16 +26,16 @@ func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
 				"Virtual routers are identified by a VRID (Virtual Router IDentifier). " +
 				"If you setup multiple groups on the same interface, their VRIDs must be unique, but it’s possible (even if not recommended for readability reasons) to use duplicate VRIDs on different interfaces.",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoVrrpGroup())
+				return schemabased.ResourceCreate(ctx, d, m, resourceInfoVrrpGroup())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoVrrpGroup())
+				return schemabased.ResourceRead(ctx, d, m, resourceInfoVrrpGroup())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoVrrpGroup())
+				return schemabased.ResourceUpdate(ctx, d, m, resourceInfoVrrpGroup())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoVrrpGroup())
+				return schemabased.ResourceDelete(ctx, d, m, resourceInfoVrrpGroup())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
@@ -54,7 +54,7 @@ func resourceInfoVrrpGroup() *resourceInfo.ResourceInfo {
 					Description:      "Name of the VRRP group.",
 					Type:             schema.TypeString,
 					Required:         true,
-					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
+					ValidateDiagFunc: schemabased.ValidateDiagStringKeyField(),
 				},
 				"description": {
 					Description: "Group description text.",

@@ -1,4 +1,4 @@
-package resourceInfo
+package schemabased
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/foltik/terraform-provider-vyos/vyos/helper/config"
-	"github.com/foltik/terraform-provider-vyos/vyos/helper/logger"
 	providerStructure "github.com/foltik/terraform-provider-vyos/vyos/provider-structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -24,20 +22,20 @@ const API_TIMEOUT_BUFFER_IN_SECONDS = 5
 // TODO refactor common logic into smaller functions and reuse them in global / non global functions.
 // TODO refactor commom logic between operations into smaller functions for reuse
 
-func keyAndTemplate(d *schema.ResourceData, resourceInfo *ResourceInfo) (config.ConfigKey, config.ConfigKeyTemplate) {
+func keyAndTemplate(d *schema.ResourceData, resourceInfo *ResourceInfo) (ConfigKey, ConfigKeyTemplate) {
 	/*
 		Useful for read, update and delete functions.
 		Create function does not have an ID to rely on and can currently not use this to get the key and template
 	*/
-	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	key_string := config.FormatKeyFromId(key_template, d.Id())
-	key := config.ConfigKey{Key: key_string}
+	key_template := ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
+	key_string := FormatKeyFromId(key_template, d.Id())
+	key := ConfigKey{Key: key_string}
 
 	return key, key_template
 }
 
 func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
-	logger.Log("INFO", "Reading resource")
+	Log("INFO", "Reading resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
@@ -46,7 +44,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 	key, _ := keyAndTemplate(d, resourceInfo)
 
 	// Generate config object from VyOS
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	if err_ret != nil {
 		diags = append(diags, diag.FromErr(err_ret)...)
 		return diags
@@ -54,7 +52,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 
 	// If resource does not exist in VyOS
 	if vyos_config == nil {
-		logger.Log("WARNING", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
+		Log("WARNING", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
 		d.SetId("")
 		return diags
 	} else {
@@ -64,21 +62,21 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 		for parameter := range resourceInfo.ResourceSchema.Schema {
 
 			if value, ok := terraform_values[parameter]; ok {
-				logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+				Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
 				d.Set(parameter, value)
 			} else {
-				logger.Log("DEBUG", "Parameter: %s, not in config, setting to nil", parameter)
+				Log("DEBUG", "Parameter: %s, not in config, setting to nil", parameter)
 				d.Set(parameter, nil)
 			}
 		}
 
 		// Set fields that make up the key / resource ID
-		for key_parameter, key_value := range config.GetFieldValuePairsFromId(d.Id()) {
-			logger.Log("DEBUG", "Setting key parameter: %s, to key_value: %v", key_parameter, key_value)
+		for key_parameter, key_value := range GetFieldValuePairsFromId(d.Id()) {
+			Log("DEBUG", "Setting key parameter: %s, to key_value: %v", key_parameter, key_value)
 
 			switch resourceInfo.ResourceSchema.Schema[key_parameter].Type {
 			case schema.TypeBool:
-				logger.Log("DEBUG", "Converting to bool")
+				Log("DEBUG", "Converting to bool")
 
 				if strings.ToLower(key_value) == "true" {
 					d.Set(key_parameter, true)
@@ -90,7 +88,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 				}
 
 			case schema.TypeFloat:
-				logger.Log("DEBUG", "Converting to float")
+				Log("DEBUG", "Converting to float")
 
 				f, err := strconv.ParseFloat(key_value, 64)
 				if err != nil {
@@ -99,7 +97,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 				}
 				d.Set(key_parameter, f)
 			case schema.TypeInt:
-				logger.Log("DEBUG", "Converting to int")
+				Log("DEBUG", "Converting to int")
 
 				i, err := strconv.ParseInt(key_value, 10, 32)
 				if err != nil {
@@ -108,7 +106,7 @@ func ResourceRead(ctx context.Context, d *schema.ResourceData, m interface{}, re
 				}
 				d.Set(key_parameter, i)
 			case schema.TypeString:
-				logger.Log("DEBUG", "Keeping as string")
+				Log("DEBUG", "Keeping as string")
 				d.Set(key_parameter, key_value)
 			default:
 				diags = append(diags, diag.Errorf("Key parameter can only be of type bool, float, int, or string. Got schema.Type...: %s", resourceInfo.ResourceSchema.Schema[key_parameter].Type)...)
@@ -126,38 +124,38 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		Supports timeout
 	*/
 
-	logger.Log("INFO", "Creating resource")
+	Log("INFO", "Creating resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
-	key_template := config.ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
-	resource_id := config.FormatResourceId(key_template, d)
-	key_string := config.FormatKeyFromResource(key_template, d)
-	key := config.ConfigKey{Key: key_string}
+	key_template := ConfigKeyTemplate{Template: resourceInfo.KeyTemplate}
+	resource_id := FormatResourceId(key_template, d)
+	key_string := FormatKeyFromResource(key_template, d)
+	key := ConfigKey{Key: key_string}
 
 	// Check for required resources before create
 	for _, reqKeyTemplateStr := range resourceInfo.CreateRequiredTemplates {
-		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
-		reqKey := config.ConfigKey{Key: config.FormatKeyFromResource(reqKeyTemplate, d)}
+		reqKeyTemplate := ConfigKeyTemplate{Template: reqKeyTemplateStr}
+		reqKey := ConfigKey{Key: FormatKeyFromResource(reqKeyTemplate, d)}
 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
 
 			// Check if resource exists (changing name of a resource will cause this to error out before the old resource is deleted at times)
-			vyos_config_self, err_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+			vyos_config_self, err_self := NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 			if err_self != nil {
 				return resource.NonRetryableError(err_self)
 			}
 
 			if vyos_config_self != nil {
-				logger.Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
+				Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
 				return resource.RetryableError(fmt.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id))
 			}
 
 			// Get required config
-			vyos_config, sub_err := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
+			vyos_config, sub_err := NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
 
 			if sub_err != nil {
 				return resource.NonRetryableError(sub_err)
@@ -177,19 +175,19 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	terraform_config, err_ret := NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
-	for _, field := range config.GetKeyFieldsFromTemplate(key_template) {
+	for _, field := range GetKeyFieldsFromTemplate(key_template) {
 		terraform_config.PopChild(field)
-		logger.Log("INFO", "Removed key field from config object: %v", field)
+		Log("INFO", "Removed key field from config object: %v", field)
 	}
 
 	path, value := terraform_config.MarshalVyos()
 	err := client.Config.Set(ctx, path, value)
 
 	if err != nil {
-		logger.Log("ERROR", "API Client error: %v", err)
+		Log("ERROR", "API Client error: %v", err)
 		return diag.FromErr(err)
 	}
 
@@ -204,7 +202,7 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 }
 
 func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, resourceInfo *ResourceInfo) (diags diag.Diagnostics) {
-	logger.Log("INFO", "Updating resource")
+	Log("INFO", "Updating resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
@@ -214,12 +212,12 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	terraform_config, err_ret := NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	// Generate config object from VyOS
 	vyos_key := key
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
@@ -235,9 +233,9 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Remove fields/parameters only internal to terraform so they are not part of the comparison
 	terraform_config.PopChild("id")
-	for _, field := range config.GetKeyFieldsFromTemplate(key_template) {
+	for _, field := range GetKeyFieldsFromTemplate(key_template) {
 		terraform_config.PopChild(field)
-		logger.Log("INFO", "Removed key field from config object: %v", field)
+		Log("INFO", "Removed key field from config object: %v", field)
 	}
 
 	// Find config changes
@@ -246,10 +244,10 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	// Remove deleted parameters
 	if deleted != nil {
 		deleted_path, deleted_config := deleted.MarshalVyos()
-		logger.Log("INFO", "Deleted detected: %#v", deleted_config)
+		Log("INFO", "Deleted detected: %#v", deleted_config)
 		err := client.Config.Delete(ctx, deleted_path, deleted_config)
 		if err != nil {
-			logger.Log("ERROR", "API Client error: %v", err)
+			Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
 		}
 	}
@@ -257,10 +255,10 @@ func ResourceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	// Apply changed parameters
 	if changed != nil {
 		changed_path, changed_config := changed.MarshalVyos()
-		logger.Log("INFO", "Changes detected: %#v", changed_config)
+		Log("INFO", "Changes detected: %#v", changed_config)
 		err := client.Config.Set(ctx, changed_path, changed_config)
 		if err != nil {
-			logger.Log("ERROR", "API Client error: %v", err)
+			Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
 		}
 	}
@@ -277,7 +275,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		Supports timeout
 	*/
 
-	logger.Log("INFO", "Deleting resource")
+	Log("INFO", "Deleting resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
@@ -287,8 +285,8 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Check for blocking resources before delete
 	for _, blockKeyTemplateStr := range resourceInfo.DeleteBlockerTemplates {
-		blockKeyTemplate := config.ConfigKeyTemplate{Template: blockKeyTemplateStr}
-		blockKey := config.FormatKeyFromResource(blockKeyTemplate, d)
+		blockKeyTemplate := ConfigKeyTemplate{Template: blockKeyTemplateStr}
+		blockKey := FormatKeyFromResource(blockKeyTemplate, d)
 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
@@ -310,7 +308,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Generate config object from VyOS (only used for logs)
 	vyos_key := key
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
@@ -326,7 +324,7 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 
 	// Remove resource
 	_, delete_config := vyos_config.MarshalVyos()
-	logger.Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key.Key, resourceInfo.DeleteStrategy, delete_config)
+	Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key.Key, resourceInfo.DeleteStrategy, delete_config)
 
 	var err error
 
@@ -335,12 +333,12 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	} else if resourceInfo.DeleteStrategy == DeleteTypeParameters {
 		err = client.Config.Delete(ctx, key.Key, delete_config)
 	} else {
-		logger.Log("ERROR", "Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
+		Log("ERROR", "Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
 		return diag.Errorf("Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
 	}
 
 	if err != nil {
-		logger.Log("ERROR", "API Client error: %v", err)
+		Log("ERROR", "API Client error: %v", err)
 		return diag.FromErr(err)
 	}
 
@@ -351,22 +349,22 @@ func ResourceDelete(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	return diags
 }
 
-func globalResourceRemoveSuperfluous(config *config.ConfigBlock, resourceInfo *ResourceInfo) error {
+func globalResourceRemoveSuperfluous(cfg *ConfigBlock, resourceInfo *ResourceInfo) error {
 	/*
 		Readies global config by removing extra children.
 		Returns error if there are any values at the top level
 	*/
 
 	// There should not be any top level values on global resources
-	if _, has_values := config.GetValues(); has_values {
+	if _, has_values := cfg.GetValues(); has_values {
 		return fmt.Errorf("Global resources with top level values are currently not supported")
 	}
 
 	// Remove parameters and children not defined in schema
-	children, _ := config.GetChildren()
+	children, _ := cfg.GetChildren()
 	for child_key := range children {
 		if _, ok := resourceInfo.ResourceSchema.Schema[child_key.Key]; ok == false {
-			config.PopChild(child_key.Key)
+			cfg.PopChild(child_key.Key)
 		}
 	}
 
@@ -378,24 +376,24 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface
 		Global resources must have a static ID defined in the resourceInfo struct
 	*/
 
-	logger.Log("INFO", "Reading global resource")
+	Log("INFO", "Reading global resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_string := resourceInfo.KeyTemplate
-	key := config.ConfigKey{Key: key_string}
+	key := ConfigKey{Key: key_string}
 
 	// Generate config object from VyOS
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	if err_ret != nil {
 		diags = append(diags, diag.FromErr(err_ret)...)
 		return diags
 	}
 
 	if vyos_config == nil {
-		logger.Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
+		Log("DEBUG", "Resource not found on remote server, setting id to empty string for: %s", key.Key)
 		d.SetId("")
 		return diags
 	} else {
@@ -411,10 +409,10 @@ func ResourceReadGlobal(ctx context.Context, d *schema.ResourceData, m interface
 		for parameter := range resourceInfo.ResourceSchema.Schema {
 
 			if value, ok := terraform_values[parameter]; ok {
-				logger.Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
+				Log("DEBUG", "Setting parameter: %s, to value: %v", parameter, value)
 				d.Set(parameter, value)
 			} else {
-				logger.Log("DEBUG", "Parameter: %s, not in config, setting to nil", parameter)
+				Log("DEBUG", "Parameter: %s, not in config, setting to nil", parameter)
 				d.Set(parameter, nil)
 			}
 		}
@@ -429,17 +427,17 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 		Supports timeout
 	*/
 
-	logger.Log("INFO", "Creating global resource")
+	Log("INFO", "Creating global resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_string := resourceInfo.KeyTemplate
-	key := config.ConfigKey{Key: key_string}
+	key := ConfigKey{Key: key_string}
 
 	// Check if resource exists
-	vyos_config_self, err_self := config.NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+	vyos_config_self, err_self := NewConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	if err_self != nil {
 		return diag.FromErr(err_self)
 	}
@@ -451,20 +449,20 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	if _, has_children := vyos_config_self.GetChildren(); has_children {
-		logger.Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
+		Log("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
 		return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
 	}
 
 	// Check for required resources before create
 	for _, reqKeyTemplateStr := range resourceInfo.CreateRequiredTemplates {
-		reqKeyTemplate := config.ConfigKeyTemplate{Template: reqKeyTemplateStr}
-		reqKey := config.ConfigKey{Key: config.FormatKeyFromResource(reqKeyTemplate, d)}
+		reqKeyTemplate := ConfigKeyTemplate{Template: reqKeyTemplateStr}
+		reqKey := ConfigKey{Key: FormatKeyFromResource(reqKeyTemplate, d)}
 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
 
 			// Get required config
-			vyos_config, sub_err := config.NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
+			vyos_config, sub_err := NewConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
 
 			if sub_err != nil {
 				return resource.NonRetryableError(sub_err)
@@ -484,14 +482,14 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	terraform_config, err_ret := NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	path, value := terraform_config.MarshalVyos()
 	err := client.Config.Set(ctx, path, value)
 
 	if err != nil {
-		logger.Log("ERROR", "API Client error: %v", err)
+		Log("ERROR", "API Client error: %v", err)
 		return diag.FromErr(err)
 	}
 
@@ -509,23 +507,23 @@ func ResourceUpdateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	/*
 		Global resources must have a static ID defined in the resourceInfo struct
 	*/
-	logger.Log("INFO", "Updating global resource")
+	Log("INFO", "Updating global resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_string := resourceInfo.KeyTemplate
-	key := config.ConfigKey{Key: key_string}
+	key := ConfigKey{Key: key_string}
 
 	// Create terraform config struct
 	terraform_key := key
-	terraform_config, err_ret := config.NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
+	terraform_config, err_ret := NewConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	// Generate config object from VyOS
 	vyos_key := key
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
@@ -554,10 +552,10 @@ func ResourceUpdateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	// Remove deleted parameters
 	if deleted != nil {
 		deleted_path, deleted_config := deleted.MarshalVyos()
-		logger.Log("INFO", "Deleted detected: %#v", deleted_config)
+		Log("INFO", "Deleted detected: %#v", deleted_config)
 		err := client.Config.Delete(ctx, deleted_path, deleted_config)
 		if err != nil {
-			logger.Log("ERROR", "API Client error: %v", err)
+			Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
 		}
 	}
@@ -565,10 +563,10 @@ func ResourceUpdateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	// Apply changed parameters
 	if changed != nil {
 		changed_path, changed_config := changed.MarshalVyos()
-		logger.Log("INFO", "Changes detected: %#v", changed_config)
+		Log("INFO", "Changes detected: %#v", changed_config)
 		err := client.Config.Set(ctx, changed_path, changed_config)
 		if err != nil {
-			logger.Log("ERROR", "API Client error: %v", err)
+			Log("ERROR", "API Client error: %v", err)
 			return diag.FromErr(err)
 		}
 	}
@@ -586,19 +584,19 @@ func ResourceDeleteGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 		Supports timeout
 	*/
 
-	logger.Log("INFO", "Deleting global resource")
+	Log("INFO", "Deleting global resource")
 
 	// Client
 	client := m.(*providerStructure.ProviderClass).Client
 
 	// Key and ID
 	key_string := resourceInfo.KeyTemplate
-	key := config.ConfigKey{Key: key_string}
+	key := ConfigKey{Key: key_string}
 
 	// Check for blocking resources before delete
 	for _, blockKeyTemplateStr := range resourceInfo.DeleteBlockerTemplates {
-		blockKeyTemplate := config.ConfigKeyTemplate{Template: blockKeyTemplateStr}
-		blockKey := config.FormatKeyFromResource(blockKeyTemplate, d)
+		blockKeyTemplate := ConfigKeyTemplate{Template: blockKeyTemplateStr}
+		blockKey := FormatKeyFromResource(blockKeyTemplate, d)
 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
@@ -620,7 +618,7 @@ func ResourceDeleteGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 
 	// Generate config object from VyOS
 	vyos_key := key
-	vyos_config, err_ret := config.NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
+	vyos_config, err_ret := NewConfigFromVyos(ctx, &vyos_key, resourceInfo.ResourceSchema, client)
 	diags = append(diags, diag.FromErr(err_ret)...)
 
 	if vyos_config == nil {
@@ -642,7 +640,7 @@ func ResourceDeleteGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 
 	// Remove resource
 	_, delete_config := vyos_config.MarshalVyos()
-	logger.Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key_string, resourceInfo.DeleteStrategy, delete_config)
+	Log("INFO", "Deleting key: '%s' using strategy: '%s' vyos resource: %#v", key_string, resourceInfo.DeleteStrategy, delete_config)
 
 	var err error
 
@@ -651,12 +649,12 @@ func ResourceDeleteGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	} else if resourceInfo.DeleteStrategy == DeleteTypeParameters {
 		err = client.Config.Delete(ctx, key_string, delete_config)
 	} else {
-		logger.Log("ERROR", "Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
+		Log("ERROR", "Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
 		return diag.Errorf("Configuration '%s' has unknown delete strategy '%s', this is a provider error.", key, resourceInfo.DeleteStrategy)
 	}
 
 	if err != nil {
-		logger.Log("ERROR", "API Client error: %v", err)
+		Log("ERROR", "API Client error: %v", err)
 		return diag.FromErr(err)
 	}
 

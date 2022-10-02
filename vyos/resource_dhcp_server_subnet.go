@@ -4,30 +4,30 @@ import (
 	"context"
 	"time"
 
-	resourceInfo "github.com/foltik/terraform-provider-vyos/vyos/helper/resource-info"
+	"github.com/foltik/terraform-provider-vyos/vyos/helper/schemabased"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceInfoDhcpServerSubnet() *resourceInfo.ResourceInfo {
-	return &resourceInfo.ResourceInfo{
+func resourceInfoDhcpServerSubnet() *schemabased.ResourceInfo {
+	return &schemabased.ResourceInfo{
 		KeyTemplate:             "service dhcp-server shared-network-name {{shared_network_name}} subnet {{subnet}}",
 		CreateRequiredTemplates: []string{"service dhcp-server shared-network-name {{shared_network_name}}"},
-		DeleteStrategy:          resourceInfo.DeleteTypeResource,
+		DeleteStrategy:          schemabased.DeleteTypeResource,
 		DeleteBlockerTemplates:  []string{},
 		ResourceSchema: &schema.Resource{
 			Description: "[IPv4 DHCP Server Subnet](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html).",
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceCreate(ctx, d, m, resourceInfoDhcpServerSubnet())
+				return schemabased.ResourceCreate(ctx, d, m, resourceInfoDhcpServerSubnet())
 			},
 			ReadContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceRead(ctx, d, m, resourceInfoDhcpServerSubnet())
+				return schemabased.ResourceRead(ctx, d, m, resourceInfoDhcpServerSubnet())
 			},
 			UpdateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceUpdate(ctx, d, m, resourceInfoDhcpServerSubnet())
+				return schemabased.ResourceUpdate(ctx, d, m, resourceInfoDhcpServerSubnet())
 			},
 			DeleteContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) (diags diag.Diagnostics) {
-				return resourceInfo.ResourceDelete(ctx, d, m, resourceInfoDhcpServerSubnet())
+				return schemabased.ResourceDelete(ctx, d, m, resourceInfoDhcpServerSubnet())
 			},
 			Importer: &schema.ResourceImporter{
 				StateContext: schema.ImportStatePassthroughContext,
@@ -51,7 +51,7 @@ func resourceInfoDhcpServerSubnet() *resourceInfo.ResourceInfo {
 					Description:      "Name of the DHCP subnet.",
 					Type:             schema.TypeString,
 					Required:         true,
-					ValidateDiagFunc: resourceInfo.ValidateDiagStringKeyField(),
+					ValidateDiagFunc: schemabased.ValidateDiagStringKeyField(),
 				},
 				"default_router": {
 					Description: "This is a configuration parameter for the `subnet`, saying that as part of the response, tell the client that the default gateway can be reached at `address`.",
