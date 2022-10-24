@@ -24,6 +24,7 @@ description: |-
 
 ### Optional
 
+- `description` (String) Group description text.
 - `disable` (Boolean) A disabled group will be removed from the VRRP process and your router will not participate in VRRP for that VRID. It will disappear from operational mode commands output, rather than enter the backup state.
 - `excluded_address` (List of String) Exclude IP addresses from VRRP packets. This option is used when you want to set IPv4 + IPv6 addresses on the same virtual interface or when used more than 20 IP addresses.
 - `health_check` (Block List, Max: 1) Health check scripts execute custom checks in addition to the master router reachability. (see [below for nested schema](#nestedblock--health_check))
@@ -33,6 +34,7 @@ description: |-
 - `preempt_delay` (Number) The time interval for preemption with the “preempt-delay” option.
 - `priority` (Number) Router priority.
 - `rfc3768_compatibility` (Boolean) RFC 3768 defines a virtual MAC address to each VRRP virtual router. This virtual router MAC address will be used as the source in all periodic VRRP messages sent by the active node. When the rfc3768-compatibility option is set, a new VRRP interface is created, to which the MAC address and the virtual IP address is automatically assigned.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `track` (Block List, Max: 1) Track option to track non VRRP interface states. VRRP changes status to FAULT if one of the track interfaces in state down. (see [below for nested schema](#nestedblock--track))
 - `transition_script` (Block List, Max: 1) Transition scripts can help you implement various fixups, such as starting and stopping services, or even modifying the VyOS config on VRRP transition. (see [below for nested schema](#nestedblock--transition_script))
 
@@ -51,6 +53,15 @@ Optional:
 
 - `failure_count` (Number) Health check failure count required for transition to fault.
 - `interval` (Number) Health check execution interval in seconds
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `delete` (String)
 
 
 <a id="nestedblock--track"></a>

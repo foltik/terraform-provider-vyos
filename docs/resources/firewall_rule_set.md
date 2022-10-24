@@ -22,11 +22,26 @@ A rule-set is a named collection of firewall rules that can be applied to an int
 ### Optional
 
 - `default_action` (String) Default action of the rule-set if no rule matched a packet criteria.
-- `description` (String) Rule-set description text.
+- `description` (String) Group description text.
 - `enable_default_log` (Boolean) Enable the logging of the default action.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
 - `id` (String) The resource ID, same as the `name`
 
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
 
+Optional:
+
+- `create` (String)
+- `delete` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import vyos_firewall_rule_set.resource_name 'name=RuleSetName'
+```

@@ -3,12 +3,12 @@
 page_title: "vyos_dhcp_service Resource - terraform-provider-vyos"
 subcategory: ""
 description: |-
-  IPv4 DHCP Server Global Config https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html. This is a global config, having more than one of this resource will casue continues diffs to occur.
+  IPv4 DHCP Server Global Config https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html. This is a global config, having more than one of this resource will cause continues diffs to occur.
 ---
 
 # vyos_dhcp_service (Resource)
 
-[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). **This is a global config, having more than one of this resource will casue continues diffs to occur.**
+[IPv4 DHCP Server Global Config](https://docs.vyos.io/en/latest/configuration/service/dhcp-server.html). **This is a global config, having more than one of this resource will cause continues diffs to occur.**
 
 
 
@@ -21,6 +21,7 @@ description: |-
 - `host_decl_name` (Boolean) Will drop `<shared-network-name>_` from client DNS record, using only the host declaration name and domain: `<hostname>.<domain-name>`.
 - `hostfile_update` (Boolean) Create DNS record per client lease, by adding clients to /etc/hosts file. Entry will have format: `<shared-network-name>_<hostname>.<domain-name>`.
 - `listen_address` (String) This configuration parameter lets the DHCP server to listen for DHCP requests sent to the specified address, it is only realistically useful for a server whose only clients are reached via unicasts, such as via DHCP relay agents.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -38,5 +39,14 @@ Required:
 Optional:
 
 - `source_address` (String) Local IP `address` used when communicating to the failover peer.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `delete` (String)
 
 

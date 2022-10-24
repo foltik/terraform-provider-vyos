@@ -147,8 +147,15 @@ func vyosWalker(ctx context.Context, config_block *configBlock, resource_schema 
 				switch resource_schema_elem.Type {
 				case schema.TypeBool, schema.TypeFloat, schema.TypeInt, schema.TypeString:
 					logger("TRACE", "adding value: parent_vyos_native_config: '%#v'", parent_vyos_native_config)
-					for _, v := range parent_vyos_native_config.([]interface{}) {
-						config_block.AddValue(resource_schema_elem.Type, v.(string))
+					if parent_vyos_native_config_casted, ok := parent_vyos_native_config.([]interface{}); ok {
+						for _, v := range parent_vyos_native_config_casted {
+							config_block.AddValue(resource_schema_elem.Type, v.(string))
+						}
+					} else if parent_vyos_native_config_casted, ok := parent_vyos_native_config.(string); ok {
+						config_block.AddValue(resource_schema_elem.Type, parent_vyos_native_config_casted)
+					} else {
+						logger("ERROR", "resource_schema_elem.Type is not string or list of string: %#v", resource_schema_elem.Type)
+						return fmt.Errorf("resource_schema_elem.Type is not string or list of string: %#v", resource_schema_elem.Type)
 					}
 				default:
 					logger("ERROR", "resource_schema_elem.Type is unhandled: %#v", resource_schema_elem.Type)
@@ -185,6 +192,9 @@ func newConfigFromTerraform(ctx context.Context, vyos_key *configKey, resource_s
 	}
 
 	for parameter_key, parameter_schema := range resource_schema.Schema {
+		if parameter_key == "id" {
+			continue
+		}
 		if terraform_native_config, ok := d.GetOk(parameter_key); ok {
 			parameter_config_block := config_block.CreateChild(parameter_key, parameter_schema.Type)
 
@@ -268,9 +278,15 @@ func terraformWalker(ctx context.Context, config_block *configBlock, resource_sc
 
 		case schema.TypeString:
 
-			if terraform_native_config, ok := terraform_native_config.(string); ok {
+			if terraform_native_config_str, ok := terraform_native_config.(string); ok {
 				if terraform_native_config != "" {
-					config_block.AddValue(resource_schema.Type, terraform_native_config)
+					config_block.AddValue(resource_schema.Type, terraform_native_config_str)
+				}
+			} else if terraform_native_config_list_str, ok := terraform_native_config.([]interface{}); ok {
+				for _, val := range terraform_native_config_list_str {
+					if terraform_native_config != "" {
+						config_block.AddValue(resource_schema.Type, val.(string))
+					}
 				}
 			} else {
 				// Make unhandled cases visible

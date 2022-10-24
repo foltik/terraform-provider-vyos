@@ -54,6 +54,7 @@ func resourceFirewallRule() *schemabased.ResourceInfo {
 					Type:        schema.TypeInt,
 					Required:    true,
 					ForceNew:    true,
+					// TODO Return random available rule prio between 8000-8999 DefaultFunc: ,
 				},
 				"description": {
 					Description: "Group description text.",

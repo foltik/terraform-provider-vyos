@@ -28,6 +28,7 @@ description: |-
 - `source_validation` (String) Set the IPv4 source validation mode.
 - `state_policy` (Block List, Max: 1) Global state policy settings (see [below for nested schema](#nestedblock--state_policy))
 - `syn_cookies` (String) Enable or Disable if VyOS use IPv4 TCP SYN Cookies.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `twa_hazards_protection` (String) Enable or Disable VyOS to be [RFC 1337](https://datatracker.ietf.org/doc/html/rfc1337.html) conform.
 
 ### Read-Only
@@ -102,3 +103,20 @@ Required:
 - `enable` (Boolean) Enable logging
 
 
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `delete` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+terraform import vyos_firewall_service.this global
+```

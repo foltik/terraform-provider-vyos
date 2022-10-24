@@ -488,66 +488,165 @@ func (cfg *configBlock) GetDifference(compare_config *configBlock) (changed *con
 		key: cfg.key,
 	}
 
-	// Find missing and changed values
-	logger("TRACE", "{%s} find missing values", cfg.key)
-	if compare_vals, ok := compare_config.GetValues(); ok {
-		for _, compare_val := range compare_vals {
-			found_val := false
+	// Handle lists of values
+	if len(compare_config.values) > 1 || len(cfg.values) > 1 {
+		logger("TRACE", "{%s} find missing values", cfg.key)
+		matched_c_idxes := []int{}
+		matched_s_idxes := []int{}
 
-			// Check each value
-			for _, self_val := range cfg.values {
+		// Find missing values
+		for cidx, cval := range compare_config.values {
+			logger("TRACE", "{%s} cidx %i, cval %s", cfg.key, cidx, cval.value)
+			for sidx, sval := range cfg.values {
+				logger("TRACE", "{%s} sidx %i, sval %s", cfg.key, sidx, sval.value)
+				previously_matched := false
+				for _, msidx := range matched_s_idxes {
+					if sidx == msidx {
+						logger("TRACE", "{%s} Already matched sidx %i", cfg.key, sidx)
+						previously_matched = true
+						break
+					}
+				}
+				if !previously_matched && cval.value == sval.value {
+					logger("TRACE", "{%s} New match cidx %i sidx %i", cfg.key, cidx, sidx)
+					matched_c_idxes = append(matched_c_idxes, cidx)
+					matched_s_idxes = append(matched_s_idxes, sidx)
+				}
+			}
+		}
+		for cidx, cval := range compare_config.values {
+			matched := false
+			for _, mcidx := range matched_c_idxes {
+				if cidx == mcidx {
+					logger("TRACE", "{%s} Match cidx %i", cfg.key, cidx)
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				logger("TRACE", "{%s} Missing val '%s'", cfg.key, cval.value)
+				missing.AddValue(cval.value_type, cval.value)
+				has_missing = true
+			}
+		}
 
-				if (compare_val.value_type == self_val.value_type) && (cfg.resource_type >= schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
-					if compare_val.value == self_val.value {
-						logger("TRACE", "{%s} Is of native type, and both has equal value: '%s', skipping.", cfg.key, self_val.value)
-					} else {
-						logger("TRACE", "{%s} Is of native type, and both has a value, assuming change '%s' => '%s'", cfg.key, compare_val.value, self_val.value)
+		// Find new values
+		logger("TRACE", "{%s} find new values", cfg.key)
+		matched_c_idxes = []int{}
+		matched_s_idxes = []int{}
+		for sidx, sval := range cfg.values {
+			logger("TRACE", "{%s} sidx %i, sval %s", cfg.key, sidx, sval.value)
+			for cidx, cval := range compare_config.values {
+				logger("TRACE", "{%s} cidx %i, cval %s", cfg.key, cidx, cval.value)
+				previously_matched := false
+				for _, mcidx := range matched_c_idxes {
+					if cidx == mcidx {
+						logger("TRACE", "{%s} Already matched cidx %i", cfg.key, cidx)
+						previously_matched = true
+						break
+					}
+				}
+				if !previously_matched && cval.value == sval.value {
+					logger("TRACE", "{%s} New match cidx %i sidx %i", cfg.key, cidx, sidx)
+					matched_c_idxes = append(matched_c_idxes, cidx)
+					matched_s_idxes = append(matched_s_idxes, sidx)
+				}
+			}
+		}
+		for sidx, sval := range cfg.values {
+			matched := false
+			for _, msidx := range matched_s_idxes {
+				if sidx == msidx {
+					logger("TRACE", "{%s} Match sidx %i", cfg.key, sidx)
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				logger("TRACE", "{%s} New val '%s'", cfg.key, sval.value)
+				changed.AddValue(sval.value_type, sval.value)
+				has_changed = true
+			}
+		}
+
+	} else {
+
+		// Find missing and changed values
+		logger("TRACE", "{%s} find missing values", cfg.key)
+		if compare_vals, ok := compare_config.GetValues(); ok {
+
+			// Keep track of indexes we already matched against.
+			matched_idxes := []int{}
+			for _, compare_val := range compare_vals {
+				found_val := false
+
+				// Check each value
+				for idx, self_val := range cfg.values {
+					already_matched := false
+					for _, matched_idx := range matched_idxes {
+						if idx == matched_idx {
+							already_matched = true
+							break
+						}
+					}
+					if already_matched {
+						logger("TRACE", "{%s} with value '%s' already matched.", cfg.key, self_val.value)
+						continue
+					}
+					if (compare_val.value_type == self_val.value_type) && (cfg.resource_type >= schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
+						matched_idxes = append(matched_idxes, idx)
+						if compare_val.value == self_val.value {
+							logger("TRACE", "{%s} Is of native type, and both has equal value: '%s', skipping.", cfg.key, self_val.value)
+						} else {
+							logger("TRACE", "{%s} Is of native type, and both has a value, assuming change '%s' => '%s'", cfg.key, compare_val.value, self_val.value)
+							found_val = true
+							changed.AddValue(self_val.value_type, self_val.value)
+							has_changed = true
+							break
+						}
+					}
+
+					if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
+						matched_idxes = append(matched_idxes, idx)
+						logger("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
 						found_val = true
-						changed.AddValue(self_val.value_type, self_val.value)
-						has_changed = true
 						break
 					}
 				}
 
-				if (compare_val.value_type == self_val.value_type) && (compare_val.value == self_val.value) {
-					logger("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
-					found_val = true
-					break
+				if !found_val {
+					logger("TRACE", "{%s} Missing val '%s'", cfg.key, compare_val.value)
+					missing.AddValue(compare_val.value_type, compare_val.value)
+					has_missing = true
 				}
-			}
-
-			if !found_val {
-				logger("TRACE", "{%s} Missing val '%s'", cfg.key, compare_val.value)
-				missing.AddValue(compare_val.value_type, compare_val.value)
-				has_missing = true
 			}
 		}
-	}
 
-	// Find new values
-	logger("TRACE", "{%s} find new values", cfg.key)
-	if self_vals, ok := cfg.GetValues(); ok {
-		for _, self_val := range self_vals {
-			found_val := false
+		// Find new values
+		logger("TRACE", "{%s} find new values", cfg.key)
+		if self_vals, ok := cfg.GetValues(); ok {
+			for _, self_val := range self_vals {
+				found_val := false
 
-			for _, compare_val := range compare_config.values {
-				if (compare_val.value_type == self_val.value_type) && (cfg.resource_type == schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
-					logger("TRACE", "{%s} Is of native type, and both has a value, assuming change '%s' => '%s', should have been handled together with missing values, skipping.", cfg.key, compare_val.value, self_val.value)
-					found_val = true
-					break
+				for _, compare_val := range compare_config.values {
+					if (compare_val.value_type == self_val.value_type) && (cfg.resource_type == schema.TypeBool || cfg.resource_type == schema.TypeFloat || cfg.resource_type == schema.TypeInt || cfg.resource_type == schema.TypeString) {
+						logger("TRACE", "{%s} Is of native type, and both has a value, assuming '%s' => '%s', should have been handled together with missing values, skipping.", cfg.key, compare_val.value, self_val.value)
+						found_val = true
+						break
+					}
+
+					if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
+						logger("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
+						found_val = true
+						break
+					}
 				}
 
-				if (self_val.value_type == compare_val.value_type) && (self_val.value == compare_val.value) {
-					logger("TRACE", "{%s} Both has value '%s'", cfg.key, self_val.value)
-					found_val = true
-					break
+				if !found_val {
+					logger("TRACE", "{%s} New val '%s'", cfg.key, self_val.value)
+					changed.AddValue(self_val.value_type, self_val.value)
+					has_changed = true
 				}
-			}
-
-			if !found_val {
-				logger("TRACE", "{%s} New val '%s'", cfg.key, self_val.value)
-				changed.AddValue(self_val.value_type, self_val.value)
-				has_changed = true
 			}
 		}
 	}

@@ -23,7 +23,7 @@ Firewall rules with criteria matching that can be applied to an interface or a z
 ### Optional
 
 - `action` (String) Action of this rule.
-- `description` (String) Rule description text. Without a good description it can be hard to know why the rule exists.
+- `description` (String) Group description text.
 - `destination` (Block List, Max: 1) Traffic destination match criteria. (see [below for nested schema](#nestedblock--destination))
 - `disable` (Boolean) Disable this rule, but keep it in the config.
 - `log` (String) Enable the logging of the this rule.
@@ -31,6 +31,7 @@ Firewall rules with criteria matching that can be applied to an interface or a z
 - `source` (Block List, Max: 1) Traffic source match criteria. (see [below for nested schema](#nestedblock--source))
 - `state` (Block List, Max: 1) Match against the state of a packet. (see [below for nested schema](#nestedblock--state))
 - `tcp` (Block List, Max: 1) TCP specific match criteria. (see [below for nested schema](#nestedblock--tcp))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -42,7 +43,7 @@ Firewall rules with criteria matching that can be applied to an interface or a z
 Optional:
 
 - `address` (String) Destination address to match against, can be in format of: `[<x.x.x.x> | <x.x.x.x>-<x.x.x.x> | <x.x.x.x/x>]`. By starting the field with a `!` it will be a negative match.
-- `group` (Block Set) Use a pre-defined group. (see [below for nested schema](#nestedblock--destination--group))
+- `group` (Block List, Max: 1) Use a pre-defined group. (see [below for nested schema](#nestedblock--destination--group))
 - `mac_address` (String) Destination mac-address to match against. By starting the field with a `!` it will be a negative match.
 - `port` (String) A port can be set with port number in format: `[<xx> | <xx>-<xx>]` or a name which is here defined: `/etc/services`. Multiple source ports can be specified as a comma-separated list. The whole list can also be “negated” using `!`.
 
@@ -95,5 +96,14 @@ Optional:
 Optional:
 
 - `flags` (String) Allowed values for TCP flags: `SYN`, `ACK`, `FIN`, `RST`, `URG`, `PSH`, `ALL` When specifying more than one flag, flags should be comma separated. The `!` negate the selected protocol.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `delete` (String)
 
 

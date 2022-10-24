@@ -30,9 +30,18 @@ description: |-
 - `lease` (Number) Assign the IP address to this machine for `time` seconds. The default value is 86400 seconds which corresponds to one day.
 - `name_server` (List of String) This is a configuration parameter for the subnet, saying that as part of the response, tell the client that the DNS server can be found at `address`.
 - `ping_check` (Boolean) When the DHCP server is considering dynamically allocating an IP address to a client, it first sends an ICMP Echo request (a ping) to the address being assigned. It waits for a second, and if no ICMP Echo response has been heard, it assigns the address. If a response is heard, the lease is abandoned, and the server does not respond to the client. The lease will remain abandoned for a minimum of abandon-lease-time seconds (defaults to 24 hours). If a there are no free addresses but there are abandoned IP addresses, the DHCP server will attempt to reclaim an abandoned IP address regardless of the value of abandon-lease-time.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
 - `id` (String) The resource ID
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `delete` (String)
 
 

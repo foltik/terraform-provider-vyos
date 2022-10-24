@@ -131,17 +131,6 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		// Retry until timeout
 		err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
 
-			// Check if resource exists (changing name of a resource will cause this to error out before the old resource is deleted at times)
-			vyos_config_self, err_self := newConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
-			if err_self != nil {
-				return resource.NonRetryableError(err_self)
-			}
-
-			if vyos_config_self != nil {
-				logger("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
-				return resource.RetryableError(fmt.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id))
-			}
-
 			// Get required config
 			vyos_config, sub_err := newConfigFromVyos(ctx, &reqKey, resourceInfo.ResourceSchema, client)
 
@@ -161,6 +150,26 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 		}
 	}
 
+	// Check if resource exists (rare bug: changing name of a resource will cause this to error out before the old resource is deleted at times)
+	err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate)-(API_TIMEOUT_BUFFER_IN_SECONDS*time.Second), func() *resource.RetryError {
+		vyos_config_self, err_self := newConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
+		if err_self != nil {
+			return resource.NonRetryableError(err_self)
+		}
+
+		if vyos_config_self != nil {
+			logger("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id)
+			return resource.RetryableError(fmt.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resource_id))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		diags = append(diags, diag.FromErr(err)...)
+		return diags
+	}
+
 	// Create terraform config struct
 	terraform_key := key
 	terraform_config, err_ret := newConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
@@ -172,7 +181,7 @@ func ResourceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, 
 	}
 
 	path, value := terraform_config.MarshalVyos()
-	err := client.Config.Set(ctx, path, value)
+	err = client.Config.Set(ctx, path, value)
 
 	if err != nil {
 		logger("ERROR", "API Client error: %v", err)
@@ -402,21 +411,26 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	key_string := resourceInfo.KeyTemplate
 	key := configKey{Key: key_string}
 
+	// Set ID (used in read function and must be set before that)
+	d.SetId(resourceInfo.StaticId)
+
 	// Check if resource exists
 	vyos_config_self, err_self := newConfigFromVyos(ctx, &key, resourceInfo.ResourceSchema, client)
 	if err_self != nil {
 		return diag.FromErr(err_self)
 	}
 
-	// Trim config
-	if err := vyos_config_self.GlobalResourceRemoveSuperfluous(resourceInfo); err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-		return diags
-	}
+	if vyos_config_self != nil {
+		// Trim config
+		if err := vyos_config_self.GlobalResourceRemoveSuperfluous(resourceInfo); err != nil {
+			diags = append(diags, diag.FromErr(err)...)
+			return diags
+		}
 
-	if _, has_children := vyos_config_self.GetChildren(); has_children {
-		logger("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
-		return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
+		if _, has_children := vyos_config_self.GetChildren(); has_children {
+			logger("ERROR", "Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
+			return diag.Errorf("Configuration under key '%s' already exists, consider an import of id: '%s'", key.Key, resourceInfo.StaticId)
+		}
 	}
 
 	// Check for required resources before create
@@ -449,7 +463,10 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 	// Create terraform config struct
 	terraform_key := key
 	terraform_config, err_ret := newConfigFromTerraform(ctx, &terraform_key, resourceInfo.ResourceSchema, d)
-	diags = append(diags, diag.FromErr(err_ret)...)
+	if err_ret != nil {
+		diags = append(diags, diag.FromErr(err_ret)...)
+		return diags
+	}
 
 	path, value := terraform_config.MarshalVyos()
 	err := client.Config.Set(ctx, path, value)
@@ -458,9 +475,6 @@ func ResourceCreateGlobal(ctx context.Context, d *schema.ResourceData, m interfa
 		logger("ERROR", "API Client error: %v", err)
 		return diag.FromErr(err)
 	}
-
-	// Set ID (used in read function and must be set before that)
-	d.SetId(resourceInfo.StaticId)
 
 	// Refresh tf state after update
 	diags_ret := resourceInfo.ResourceSchema.ReadContext(ctx, d, m)
