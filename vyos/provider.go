@@ -52,7 +52,7 @@ func Provider() *schema.Provider {
 			"vyos_interface_ethernet":              resourceInterfaceEthernet().ResourceSchema,
 			"vyos_interface_ethernet_vif":          resourceInterfaceEthernetVif().ResourceSchema,
 			"vyos_interface_pseudo_ethernet":       resourceInterfacePseudoEthernet().ResourceSchema,
-			"vyos_intercafe_pseudo_ethernet_vif":   resourceInterfacePseudoEthernetVif().ResourceSchema,
+			"vyos_interface_pseudo_ethernet_vif":   resourceInterfacePseudoEthernetVif().ResourceSchema,
 			"vyos_dnat":                            resourceDestinationNat().ResourceSchema,
 			"vyos_snat":                            resourceSourceNat().ResourceSchema,
 			"vyos_zone_policy":                     resourceZonePolicy().ResourceSchema,
