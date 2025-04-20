@@ -43,7 +43,7 @@ func resourceConfigBlock() *schema.Resource {
 				ValidateDiagFunc: validation.MapKeyMatch(regexp.MustCompile("^[^ ]+$"), "Config keys can not contain whitespace"),
 			},
 		},
-        Timeouts: &schema.ResourceTimeout{
+		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(10 * time.Minute),
 			Read:    schema.DefaultTimeout(10 * time.Minute),
 			Update:  schema.DefaultTimeout(10 * time.Minute),
@@ -61,30 +61,19 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.ShowTree(ctx, path)
+	configs, err := client.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	// Dont care about sub config blocks
-	for attr, val := range configs {
-		switch val.(type) {
-		default:
-			continue
-		case string:
-			return diag.Errorf("Configuration block '%s' already exists and has '%s' set, try a resource import instead.", path, attr)
-		case int:
-			return diag.Errorf("Configuration block '%s' already exists and has '%s' set, try a resource import instead.", path, attr)
-		}
+	if configs != nil {
+		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", path, configs)
 	}
 
 	configs = d.Get("configs").(map[string]interface{})
 
-	commands := map[string]interface{}{}
-	for attr, val := range configs {
-		commands[path+" "+attr] = val
-	}
-
-	err = client.Config.SetTree(ctx, commands)
+	err = client.Config.Set(ctx, path, configs)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -101,35 +90,33 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 	c := *p.client
 	path := d.Id()
 
-	configs, err := c.Config.ShowTree(ctx, path)
+	configs, err := c.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Remove child blocks of config
-	for attr, val := range configs {
-		switch val.(type) {
-		default:
-			delete(configs, attr)
-		case string:
-			continue
-		case int:
-			continue
-		}
-	}
-
-	// Easiest way to allow ImportStatePassthroughContext to work is to set the path
-	if d.Get("path") == "" {
-		if err := d.Set("path", path); err != nil {
+	switch value := configs.(type) {
+	case map[string]any:
+		if err := d.Set("configs", value); err != nil {
 			return diag.FromErr(err)
 		}
+		return diags
+	default:
+		return diag.Errorf("Configuration at '%s' is not a string: %s.", path, value)
 	}
 
-	if err := d.Set("configs", configs); err != nil {
-		return diag.FromErr(err)
-	}
+	// // Remove child blocks of config
+	// for attr, val := range configs {
+	// 	switch val.(type) {
+	// 	default:
+	// 		delete(configs, attr)
+	// 	case string:
+	// 		continue
+	// 	case int:
+	// 		continue
+	// 	}
+	// }
 
-	return diags
 }
 
 func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -149,21 +136,16 @@ func resourceConfigBlockUpdate(ctx context.Context, d *schema.ResourceData, m in
 		value, ok := new_configs[old_attr]
 		_ = value
 		if !ok {
-			deleted_attrs = append(deleted_attrs, path+" "+old_attr)
+			deleted_attrs = append(deleted_attrs, old_attr)
 		}
 	}
 
-	errDel := c.Config.Delete(ctx, deleted_attrs...)
+	errDel := c.Config.Delete(ctx, path, deleted_attrs)
 	if errDel != nil {
 		return diag.FromErr(errDel)
 	}
 
-	commands := map[string]interface{}{}
-	for attr, val := range new_configs {
-		commands[path+" "+attr] = val
-	}
-
-	errSet := c.Config.SetTree(ctx, commands)
+	errSet := c.Config.Set(ctx, path, new_configs)
 	if errSet != nil {
 		return diag.FromErr(errSet)
 	}

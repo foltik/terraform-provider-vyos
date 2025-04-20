@@ -80,16 +80,10 @@ func configDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
 // Covert configs to a set of vyos client commands.
 // If expand_slice is set, then list values (json encoded) are expanded in multiple vyos client commands
 // If expand_slice is not set then the values in the map might contain slices
-func getCommandsForConfig(path string, config interface{}, expand_slice bool) (commands map[string]interface{}) {
+func getCommandsForConfig(config interface{}, expand_slice bool) (commands map[string]any) {
 
 	commands = map[string]interface{}{}
 	for key, value := range config.(map[string]interface{}) {
-		// prefix with path - Note that key might be empty
-		if len(key) > 0 {
-			key = path + " " + key
-		} else {
-			key = path
-		}
 
 		// Try to decode the string as json list
 		value := value.(string)
@@ -123,9 +117,9 @@ func resourceConfigBlockTreeCreate(ctx context.Context, d *schema.ResourceData, 
 	path := d.Get("path").(string)
 
 	// Get commands needed to create resource in Vyos
-	commands := getCommandsForConfig(path, d.Get("configs"), true)
+	commands := getCommandsForConfig(d.Get("configs"), true)
 
-	err := client.Config.SetTree(ctx, commands)
+	err := client.Config.Set(ctx, path, commands)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -142,7 +136,7 @@ func resourceConfigBlockTreeRead(ctx context.Context, d *schema.ResourceData, m 
 	c := *p.client
 	path := d.Id()
 
-	configsTree, err := c.Config.ShowAny(ctx, path)
+	configsTree, err := c.Config.Show(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -208,8 +202,8 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 	new_configs := n.(map[string]interface{})
 
 	// Get commands needed to create old a new config
-	old_comands := getCommandsForConfig(path, old_configs, false)
-	new_comands := getCommandsForConfig(path, new_configs, false)
+	old_comands := getCommandsForConfig(old_configs, false)
+	new_comands := getCommandsForConfig(new_configs, false)
 
 	// NOTE: it is important to apply new settings before deleting to
 	//       avoid errors. This is because delete and set are 2
@@ -233,7 +227,7 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 	if len(new_comands) > 0 {
-		errSet := c.Config.SetTree(ctx, new_comands)
+		errSet := c.Config.Set(ctx, path, new_comands)
 		if errSet != nil {
 			return diag.FromErr(errSet)
 		}
@@ -300,7 +294,7 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 	if len(delete_commands) > 0 {
-		errDel := c.Config.DeleteTree(ctx, delete_commands)
+		errDel := c.Config.Delete(ctx, path, delete_commands)
 		if errDel != nil {
 			return diag.FromErr(errDel)
 		}
