@@ -61,7 +61,7 @@ func resourceConfigBlockCreate(ctx context.Context, d *schema.ResourceData, m in
 	path := d.Get("path").(string)
 
 	// Check if config already exists
-	configs, err := client.Config.Show(ctx, path)
+	configs, err := p.ShowCached(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -87,10 +87,9 @@ func resourceConfigBlockRead(ctx context.Context, d *schema.ResourceData, m inte
 	var diags diag.Diagnostics
 
 	p := m.(*ProviderClass)
-	c := *p.client
 	path := d.Id()
 
-	configs, err := c.Config.Show(ctx, path)
+	configs, err := p.ShowCached(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}

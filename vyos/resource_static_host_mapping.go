@@ -29,7 +29,7 @@ func resourceStaticHostMapping() *schema.Resource {
 				Required:    true,
 			},
 		},
-        Timeouts: &schema.ResourceTimeout{
+		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(10 * time.Minute),
 			Read:    schema.DefaultTimeout(10 * time.Minute),
 			Update:  schema.DefaultTimeout(10 * time.Minute),
@@ -57,11 +57,10 @@ func resourceStaticHostMappingCreate(ctx context.Context, d *schema.ResourceData
 
 func resourceStaticHostMappingRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	p := m.(*ProviderClass)
-	c := *p.client
 	host := d.Get("host").(string)
 
 	path := fmt.Sprintf("system static-host-mapping host-name %s inet", host)
-	ip, err := c.Config.Show(ctx, path)
+	ip, err := p.ShowCached(ctx, path)
 	if err != nil {
 		return diag.FromErr(err)
 	}
