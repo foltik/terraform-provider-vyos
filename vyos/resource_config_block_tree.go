@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,7 +44,8 @@ func resourceConfigBlockTree() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Required: true,
+				Required:         true,
+				DiffSuppressFunc: configDiffSuppressFunc,
 			},
 		},
 		Timeouts: &schema.ResourceTimeout{
@@ -54,6 +56,25 @@ func resourceConfigBlockTree() *schema.Resource {
 			Default: schema.DefaultTimeout(10 * time.Minute),
 		},
 	}
+}
+
+func configDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
+
+	multivalueOld := []string{}
+	err := json.Unmarshal([]byte(old), &multivalueOld)
+	if err != nil {
+		return false
+	}
+	sort.Strings(multivalueOld)
+
+	multivalueNew := []string{}
+	err = json.Unmarshal([]byte(new), &multivalueNew)
+	if err != nil {
+		return false
+	}
+	sort.Strings(multivalueNew)
+
+	return reflect.DeepEqual(multivalueOld, multivalueNew)
 }
 
 // Covert configs to a set of vyos client commands.
