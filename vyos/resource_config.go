@@ -36,7 +36,7 @@ func resourceConfig() *schema.Resource {
 				Required:    true,
 			},
 		},
-        Timeouts: &schema.ResourceTimeout{
+		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(10 * time.Minute),
 			Read:    schema.DefaultTimeout(10 * time.Minute),
 			Update:  schema.DefaultTimeout(10 * time.Minute),
@@ -54,13 +54,13 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 
 	// Check if config already exists
-	val, err := c.Config.Show(ctx, key)
+	val, err := p.ShowCached(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	// Dont care about sub config blocks
 	if val != nil {
-		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, *val)
+		return diag.Errorf("Configuration '%s' already exists with value '%s' set, try a resource import instead.", key, val)
 	}
 
 	err = c.Config.Set(ctx, key, value)
@@ -75,7 +75,6 @@ func resourceConfigCreate(ctx context.Context, d *schema.ResourceData, m interfa
 
 func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	p := m.(*ProviderClass)
-	c := *p.client
 	key := d.Id()
 
 	// Convert old unix timestamp style ID to key path for existing resources to support importing
@@ -91,7 +90,7 @@ func resourceConfigRead(ctx context.Context, d *schema.ResourceData, m interface
 		}
 	}
 
-	value, err := c.Config.Show(ctx, key)
+	value, err := p.ShowCached(ctx, key)
 	if err != nil {
 		return diag.FromErr(err)
 	}
