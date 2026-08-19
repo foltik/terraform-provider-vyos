@@ -238,8 +238,8 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 	for command, old_value := range old_comands {
 		new_value, ok := new_comands[command]
 		if !ok {
-			// Not found in new config - delete commpletly
-			if len(command) > len(path) {
+			// Not found in new config - delete completely
+			if len(command) > 0 {
 				// Do not delete path
 				delete_commands[command] = ""
 			}
@@ -255,8 +255,10 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 				}
 				// Only delete if old value not in new config AND this
 				// command is bellow the resource path
-				if !found && len(command) > len(path) {
-					delete_commands[command] = old_value_part
+				if !found && len(command) > 0 {
+					// A command may hold several values
+					values, _ := delete_commands[command].([]string)
+					delete_commands[command] = append(values, old_value_part)
 				}
 			}
 		}
@@ -278,17 +280,17 @@ func resourceConfigBlockTreeUpdate(ctx context.Context, d *schema.ResourceData, 
 			parent += key_part
 			found := false
 			for key, _ := range new_comands {
-				if strings.Contains(key, parent) {
+				if key == parent || strings.HasPrefix(key, parent+" ") {
 					// parent still exists in new config - keep parent
 					found = true
 					break
 				}
 			}
-			if !found && len(parent) > len(path) {
-				// Delete parent if not done already
-				if _, ok := delete_commands[parent]; !ok {
-					delete_commands[parent] = ""
-				}
+			if !found && len(parent) > 0 {
+				// Deleting the parent covers this command as well, and
+				// deleting an already deleted node fails
+				delete(delete_commands, key)
+				delete_commands[parent] = ""
 				break out
 			}
 		}
